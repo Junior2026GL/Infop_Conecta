@@ -5,6 +5,18 @@ export async function listCampaigns() {
   return data.data;
 }
 
+export async function downloadParticipantsTemplate() {
+  const response = await api.get('/campaigns/plantilla-excel', { responseType: 'blob' });
+  const url = URL.createObjectURL(response.data);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = 'plantilla-participantes.xlsx';
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+}
+
 export async function getCampaign(id) {
   const { data } = await api.get(`/campaigns/${id}`);
   return data.data;

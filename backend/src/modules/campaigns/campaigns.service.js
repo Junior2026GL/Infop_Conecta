@@ -17,6 +17,33 @@ function parseExcelBuffer(buffer) {
   return XLSX.utils.sheet_to_json(sheet, { defval: '' });
 }
 
+/**
+ * Genera el Excel modelo para importar participantes. Solo lleva los encabezados
+ * (sin filas de ejemplo) para que nadie envíe mensajes a datos ficticios por error.
+ * La importación lee únicamente la primera hoja, así que las instrucciones van en la segunda.
+ */
+export function buildParticipantsTemplate() {
+  const participantes = XLSX.utils.aoa_to_sheet([['nombre', 'telefono', 'nota']]);
+  participantes['!cols'] = [{ wch: 32 }, { wch: 16 }, { wch: 10 }];
+
+  const instrucciones = XLSX.utils.aoa_to_sheet([
+    ['Cómo llenar la hoja «Participantes»'],
+    [''],
+    ['nombre', 'Obligatorio. Nombre del participante tal como se mostrará en el mensaje.'],
+    ['telefono', 'Obligatorio. 8 dígitos (98765432) o 11 con código de país (50498765432).'],
+    ['nota', 'Solo si la plantilla incluye la nota del participante; si no, déjala vacía.'],
+    [''],
+    ['No cambies los encabezados de la primera fila. Borra esta hoja si lo prefieres.'],
+  ]);
+  instrucciones['!cols'] = [{ wch: 12 }, { wch: 80 }];
+
+  const workbook = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(workbook, participantes, 'Participantes');
+  XLSX.utils.book_append_sheet(workbook, instrucciones, 'Instrucciones');
+
+  return XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
+}
+
 function normalizeKey(key) {
   return String(key || '').trim().toLowerCase();
 }

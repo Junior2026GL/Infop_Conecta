@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import PageHeader from '../../../components/PageHeader.jsx';
 import Modal from '../../../components/Modal.jsx';
 import Pagination from '../../../components/Pagination.jsx';
+import WhatsAppPreview from '../../../components/WhatsAppPreview.jsx';
 import {
   IconUpload,
   IconSend,
@@ -18,6 +19,7 @@ import {
   IconAlert,
   IconTrash,
   IconEdit,
+  IconDownload,
 } from '../../../components/icons.jsx';
 import { useToast } from '../../../components/ToastProvider.jsx';
 import { listTemplates } from '../../templates/services/templates.service.js';
@@ -32,6 +34,7 @@ import {
   removeDestinatario,
   updateDestinatario,
   addDestinatario,
+  downloadParticipantsTemplate,
 } from '../services/campaigns.service.js';
 
 const estadoLabels = {
@@ -105,10 +108,31 @@ function formatFileSize(bytes) {
 }
 
 function FileDropzone({ file, onChange }) {
+  const toast = useToast();
   const inputRef = useRef(null);
+  const [dragging, setDragging] = useState(false);
+
+  function handleDrop(e) {
+    e.preventDefault();
+    setDragging(false);
+    const dropped = e.dataTransfer.files?.[0];
+    if (!dropped) return;
+
+    if (!/\.(xlsx|xls|csv)$/i.test(dropped.name)) {
+      toast.error('Formato no válido. Usa un archivo .xlsx, .xls o .csv.');
+      return;
+    }
+    onChange(dropped);
+  }
 
   return (
-    <div className={`file-drop ${file ? 'has-file' : ''}`} onClick={() => inputRef.current?.click()}>
+    <div
+      className={`file-drop ${file ? 'has-file' : ''} ${dragging ? 'dragging' : ''}`}
+      onClick={() => inputRef.current?.click()}
+      onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
+      onDragLeave={() => setDragging(false)}
+      onDrop={handleDrop}
+    >
       <input
         ref={inputRef}
         type="file"
@@ -118,10 +142,10 @@ function FileDropzone({ file, onChange }) {
       />
       {file ? (
         <div className="file-drop-selected">
-          <span className="file-drop-icon selected"><IconUpload width={18} height={18} /></span>
+          <span className="file-drop-icon selected"><IconCheck width={18} height={18} /></span>
           <div className="file-drop-text">
             <b>{file.name}</b>
-            <small>{formatFileSize(file.size)}</small>
+            <small>{formatFileSize(file.size)} · listo para importar</small>
           </div>
           <button
             type="button"
@@ -134,8 +158,8 @@ function FileDropzone({ file, onChange }) {
         </div>
       ) : (
         <>
-          <span className="file-drop-icon"><IconUpload width={20} height={20} /></span>
-          <b>Haz clic para seleccionar un archivo</b>
+          <span className="file-drop-icon big"><IconUpload width={24} height={24} /></span>
+          <b>{dragging ? 'Suelta el archivo aquí' : 'Arrastra tu archivo aquí o haz clic para elegirlo'}</b>
           <small>Formatos aceptados: .xlsx, .xls o .csv</small>
         </>
       )}
@@ -212,6 +236,7 @@ export default function CampaignsPage() {
   const [sending, setSending] = useState(false);
   const [showConfirmSend, setShowConfirmSend] = useState(false);
   const [retrying, setRetrying] = useState(false);
+  const [downloadingTemplate, setDownloadingTemplate] = useState(false);
   const [soloInvalidos, setSoloInvalidos] = useState(false);
   const [sendTotal, setSendTotal] = useState(0);
   const [removingId, setRemovingId] = useState(null);
@@ -330,6 +355,18 @@ export default function CampaignsPage() {
       toast.error(message);
     } finally {
       setImporting(false);
+    }
+  }
+
+  async function handleDownloadTemplate() {
+    setDownloadingTemplate(true);
+    try {
+      await downloadParticipantsTemplate();
+    } catch (err) {
+      console.error(err);
+      toast.error('No se pudo descargar la plantilla de Excel');
+    } finally {
+      setDownloadingTemplate(false);
     }
   }
 
@@ -481,6 +518,10 @@ export default function CampaignsPage() {
 
   const alcanzaPara = costoMensaje > 0 && misaldo !== null ? Math.floor(misaldo / costoMensaje) : null;
 
+  // Con 20 mensajes o menos el saldo se considera justo.
+  const estadoSaldo = alcanzaPara === null ? 'ok' : alcanzaPara <= 0 ? 'none' : alcanzaPara <= 20 ? 'low' : 'ok';
+  const requiereNota = (plantilla?.variables || []).some((v) => v.key === 'nota');
+
   const filteredHistory = useMemo(() => history.filter((c) => {
     const term = historySearch.trim().toLowerCase();
     if (!term) return true;
@@ -512,10 +553,10 @@ export default function CampaignsPage() {
       {showImportModal && (
         <Modal
           title="Nueva campaña"
-          subtitle="Importa un Excel o CSV para enviar mensajes de WhatsApp."
+          subtitle="Elige una plantilla, completa los datos e importa a tus participantes."
           icon={<IconUpload />}
           onClose={() => setShowImportModal(false)}
-          width={760}
+          width={1000}
           footer={
             <>
               <button type="button" className="btn-outline" onClick={() => setShowImportModal(false)}>
@@ -527,84 +568,116 @@ export default function CampaignsPage() {
             </>
           }
         >
-          <form id="form-nueva-campana" className="form-sections" onSubmit={submitImport}>
-            <fieldset className="form-section">
-              <legend>Detalles de la campaña</legend>
-              <div className="form-grid">
-                <div>
-                  <label>Plantilla</label>
+          <form id="form-nueva-campana" onSubmit={submitImport}>
+            <div className="campaign-modal-grid">
+              <div className="campaign-modal-form">
+                <section className="form-step">
+                  <h4 className="step-head"><span className="step-num">1</span> Plantilla</h4>
                   <TemplateSelect templates={templates} value={plantillaId} onChange={selectPlantilla} />
-                </div>
+                </section>
 
-                <div>
-                  <label>Curso</label>
-                  <input
-                    value={curso}
-                    onChange={(e) => setCurso(e.target.value)}
-                    placeholder={PLACEHOLDERS_CAMPOS_FIJOS.curso}
-                    required
+                <section className="form-step">
+                  <h4 className="step-head"><span className="step-num">2</span> Datos de la campaña</h4>
+                  <div className="form-grid">
+                    <div>
+                      <label>Curso</label>
+                      <input
+                        value={curso}
+                        onChange={(e) => setCurso(e.target.value)}
+                        placeholder={PLACEHOLDERS_CAMPOS_FIJOS.curso}
+                        required
+                      />
+                    </div>
+
+                    <div>
+                      <label>Nombre de la campaña <span className="label-optional">(opcional)</span></label>
+                      <input value={nombre} onChange={(e) => setNombre(e.target.value)} placeholder="Ej. Notas corte 3" />
+                    </div>
+                  </div>
+
+                  {camposFijos.length > 0 && (
+                    <div className="fixed-fields">
+                      <p className="fixed-fields-title">Datos iguales para todos los participantes</p>
+                      <div className="form-grid">
+                        {camposFijos.map((campo) => (
+                          <div key={campo.key}>
+                            <label>{ETIQUETAS_CAMPOS_FIJOS[campo.key] || campo.etiqueta || campo.key}</label>
+                            <input
+                              value={valoresFijos[campo.key] || ''}
+                              onChange={(e) => setValoresFijos({ ...valoresFijos, [campo.key]: e.target.value })}
+                              placeholder={PLACEHOLDERS_CAMPOS_FIJOS[campo.key] || `Ej. ${campo.etiqueta || campo.key}`}
+                              required
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </section>
+
+                <section className="form-step">
+                  <h4 className="step-head"><span className="step-num">3</span> Archivo de participantes</h4>
+                  <FileDropzone file={file} onChange={setFile} />
+                  <div className="file-hint">
+                    <span>
+                      Columnas: <b>nombre</b>, <b>telefono</b>{requiereNota && <>, <b>nota</b></>}.
+                    </span>
+                    <button type="button" className="btn-link" onClick={handleDownloadTemplate} disabled={downloadingTemplate}>
+                      <IconDownload width={14} height={14} /> {downloadingTemplate ? 'Descargando…' : 'Descargar plantilla de Excel'}
+                    </button>
+                  </div>
+                </section>
+              </div>
+
+              <aside className="campaign-modal-side">
+                {plantilla ? (
+                  <WhatsAppPreview
+                    contenido={plantilla.contenido}
+                    variables={plantilla.variables}
+                    values={{ ...valoresFijos, curso }}
+                    label="Así lo recibirán"
                   />
-                </div>
-
-                {camposFijos.map((campo) => (
-                  <div key={campo.key}>
-                    <label>{ETIQUETAS_CAMPOS_FIJOS[campo.key] || campo.etiqueta || campo.key}</label>
-                    <input
-                      value={valoresFijos[campo.key] || ''}
-                      onChange={(e) => setValoresFijos({ ...valoresFijos, [campo.key]: e.target.value })}
-                      placeholder={PLACEHOLDERS_CAMPOS_FIJOS[campo.key] || `Ej. ${campo.etiqueta || campo.key}`}
-                      required
-                    />
+                ) : (
+                  <div className="preview-placeholder">
+                    <span className="preview-placeholder-icon"><IconTemplate width={22} height={22} /></span>
+                    <b>Vista previa del mensaje</b>
+                    <p>Elige una plantilla para ver cómo lo recibirán tus participantes.</p>
                   </div>
-                ))}
+                )}
 
-                <div>
-                  <label>Nombre de la campaña <span className="label-optional">(opcional)</span></label>
-                  <input value={nombre} onChange={(e) => setNombre(e.target.value)} placeholder="Ej. Notas corte 3" />
-                </div>
-              </div>
-            </fieldset>
+                {costoMensaje > 0 && (
+                  <div className={`balance-box ${estadoSaldo}`}>
+                    <div className="balance-box-row">
+                      <span><IconCost width={14} height={14} /> Costo por mensaje</span>
+                      <strong>L. {Number(costoMensaje).toFixed(2)}</strong>
+                    </div>
+                    {misaldo !== null && (
+                      <div className="balance-box-row">
+                        <span><IconWallet width={14} height={14} /> Tu saldo</span>
+                        <strong>L. {Number(misaldo).toFixed(2)}</strong>
+                      </div>
+                    )}
+                    {alcanzaPara !== null && (
+                      <div className="balance-box-row">
+                        <span><IconSend width={14} height={14} /> Alcanza para</span>
+                        <strong>{alcanzaPara} mensaje{alcanzaPara === 1 ? '' : 's'}</strong>
+                      </div>
+                    )}
 
-            <fieldset className="form-section">
-              <legend>Archivo de participantes</legend>
-              <FileDropzone file={file} onChange={setFile} />
-            </fieldset>
+                    {estadoSaldo === 'none' && (
+                      <p className="balance-box-note">
+                        Tu saldo no alcanza para enviar ningún mensaje. Puedes importar y revisar el archivo,
+                        pero no podrás enviarlo hasta que se recargue el saldo.
+                      </p>
+                    )}
+                    {estadoSaldo === 'low' && (
+                      <p className="balance-box-note">Te queda poco saldo. Revisa que alcance para toda la lista.</p>
+                    )}
+                  </div>
+                )}
+              </aside>
+            </div>
           </form>
-
-          {costoMensaje > 0 && (
-            <>
-              <div className="campaign-cost-box">
-                <div>
-                  <span><IconCost width={14} height={14} /> Costo por mensaje</span>
-                  <strong>L. {Number(costoMensaje).toFixed(2)}</strong>
-                </div>
-                {misaldo !== null && (
-                  <div>
-                    <span><IconWallet width={14} height={14} /> Tu saldo disponible</span>
-                    <strong className={misaldo <= 0 ? 'texto-negativo' : ''}>L. {Number(misaldo).toFixed(2)}</strong>
-                  </div>
-                )}
-                {alcanzaPara !== null && (
-                  <div>
-                    <span><IconSend width={14} height={14} /> Alcanza para</span>
-                    <strong className={alcanzaPara <= 0 ? 'texto-negativo' : ''}>
-                      {alcanzaPara} mensaje{alcanzaPara === 1 ? '' : 's'}
-                    </strong>
-                  </div>
-                )}
-              </div>
-
-              {alcanzaPara !== null && alcanzaPara <= 0 && (
-                <div className="alert warning dash-alert" style={{ marginTop: 12 }}>
-                  <IconAlert />
-                  <span>
-                    Tu saldo actual no alcanza para enviar ningún mensaje. Podrás importar el archivo y
-                    revisarlo, pero no podrás enviarlo hasta que se recargue el saldo.
-                  </span>
-                </div>
-              )}
-            </>
-          )}
         </Modal>
       )}
 

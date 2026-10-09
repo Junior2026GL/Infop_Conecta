@@ -12,6 +12,7 @@ const upload = multer({
 const router = Router();
 
 router.get('/', controller.list);
+router.get('/plantilla-excel', controller.downloadTemplate);
 router.get('/reportes/usuarios', requireRole(ROLES.SUPER_ADMIN), controller.reportUsuarios);
 router.get('/:id', controller.getById);
 router.post('/importar', upload.single('archivo'), controller.importFile);

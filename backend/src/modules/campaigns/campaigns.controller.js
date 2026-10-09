@@ -9,6 +9,17 @@ export async function list(req, res, next) {
   }
 }
 
+export function downloadTemplate(req, res, next) {
+  try {
+    const buffer = service.buildParticipantsTemplate();
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', 'attachment; filename="plantilla-participantes.xlsx"');
+    res.send(buffer);
+  } catch (error) {
+    next(error);
+  }
+}
+
 export async function getById(req, res, next) {
   try {
     res.json({ ok: true, data: await service.getById(req.params.id, req.user) });
