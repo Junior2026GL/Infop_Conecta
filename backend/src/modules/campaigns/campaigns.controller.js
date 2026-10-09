@@ -9,11 +9,11 @@ export async function list(req, res, next) {
   }
 }
 
-export function downloadTemplate(req, res, next) {
+export async function downloadTemplate(req, res, next) {
   try {
-    const buffer = service.buildParticipantsTemplate();
+    const { buffer, filename } = await service.buildParticipantsTemplate(req.query.plantillaId);
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-    res.setHeader('Content-Disposition', 'attachment; filename="plantilla-participantes.xlsx"');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
     res.send(buffer);
   } catch (error) {
     next(error);

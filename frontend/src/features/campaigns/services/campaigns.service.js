@@ -5,12 +5,19 @@ export async function listCampaigns() {
   return data.data;
 }
 
-export async function downloadParticipantsTemplate() {
-  const response = await api.get('/campaigns/plantilla-excel', { responseType: 'blob' });
+export async function downloadParticipantsTemplate(plantillaId) {
+  const response = await api.get('/campaigns/plantilla-excel', {
+    params: { plantillaId },
+    responseType: 'blob',
+  });
+
+  const disposition = response.headers?.['content-disposition'] || '';
+  const filename = /filename="([^"]+)"/.exec(disposition)?.[1] || 'participantes.xlsx';
+
   const url = URL.createObjectURL(response.data);
   const link = document.createElement('a');
   link.href = url;
-  link.download = 'plantilla-participantes.xlsx';
+  link.download = filename;
   document.body.appendChild(link);
   link.click();
   link.remove();

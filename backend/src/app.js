@@ -13,6 +13,8 @@ app.use(
   cors({
     origin: env.frontendUrl,
     credentials: true,
+    // Permite al frontend leer el nombre del archivo en las descargas (Excel modelo).
+    exposedHeaders: ['Content-Disposition'],
   })
 );
 app.use(express.json({ limit: '2mb' }));

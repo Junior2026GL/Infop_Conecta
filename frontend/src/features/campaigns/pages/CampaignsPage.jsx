@@ -361,7 +361,7 @@ export default function CampaignsPage() {
   async function handleDownloadTemplate() {
     setDownloadingTemplate(true);
     try {
-      await downloadParticipantsTemplate();
+      await downloadParticipantsTemplate(plantillaId);
     } catch (err) {
       console.error(err);
       toast.error('No se pudo descargar la plantilla de Excel');
@@ -620,9 +620,19 @@ export default function CampaignsPage() {
                   <FileDropzone file={file} onChange={setFile} />
                   <div className="file-hint">
                     <span>
-                      Columnas: <b>nombre</b>, <b>telefono</b>{requiereNota && <>, <b>nota</b></>}.
+                      {plantilla ? (
+                        <>Columnas: <b>nombre</b>, <b>telefono</b>{requiereNota && <>, <b>nota</b></>}.</>
+                      ) : (
+                        'Elige una plantilla para ver las columnas que necesita.'
+                      )}
                     </span>
-                    <button type="button" className="btn-link" onClick={handleDownloadTemplate} disabled={downloadingTemplate}>
+                    <button
+                      type="button"
+                      className="btn-link"
+                      onClick={handleDownloadTemplate}
+                      disabled={downloadingTemplate || !plantilla}
+                      title={plantilla ? undefined : 'Elige primero una plantilla'}
+                    >
                       <IconDownload width={14} height={14} /> {downloadingTemplate ? 'Descargando…' : 'Descargar plantilla de Excel'}
                     </button>
                   </div>
@@ -635,7 +645,7 @@ export default function CampaignsPage() {
                     contenido={plantilla.contenido}
                     variables={plantilla.variables}
                     values={{ ...valoresFijos, curso }}
-                    label="Así lo recibirán"
+                    label="Así lo recibirán los participantes de los cursos"
                   />
                 ) : (
                   <div className="preview-placeholder">

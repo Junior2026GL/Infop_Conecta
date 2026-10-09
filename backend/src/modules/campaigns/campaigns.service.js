@@ -17,21 +17,39 @@ function parseExcelBuffer(buffer) {
   return XLSX.utils.sheet_to_json(sheet, { defval: '' });
 }
 
+function slugify(texto) {
+  return String(texto || '')
+    .normalize('NFD')
+    .replace(/\p{Diacritic}/gu, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+}
+
 /**
- * Genera el Excel modelo para importar participantes. Solo lleva los encabezados
- * (sin filas de ejemplo) para que nadie envíe mensajes a datos ficticios por error.
- * La importación lee únicamente la primera hoja, así que las instrucciones van en la segunda.
+ * Genera el Excel modelo para importar participantes de una plantilla concreta:
+ * las columnas dependen de lo que esa plantilla necesita (la nota solo si la usa).
+ * Solo lleva encabezados, sin filas de ejemplo, para que nadie envíe mensajes a datos
+ * ficticios por error. La importación lee únicamente la primera hoja, así que las
+ * instrucciones van en la segunda.
  */
-export function buildParticipantsTemplate() {
-  const participantes = XLSX.utils.aoa_to_sheet([['nombre', 'telefono', 'nota']]);
-  participantes['!cols'] = [{ wch: 32 }, { wch: 16 }, { wch: 10 }];
+export async function buildParticipantsTemplate(plantillaId) {
+  if (!plantillaId) throw new AppError('Elige una plantilla para descargar el Excel modelo');
+
+  const plantilla = await resolveTemplate(plantillaId);
+  const needsNota = requiresNota(plantilla);
+
+  const encabezados = ['nombre', 'telefono', ...(needsNota ? ['nota'] : [])];
+  const participantes = XLSX.utils.aoa_to_sheet([encabezados]);
+  participantes['!cols'] = [{ wch: 32 }, { wch: 16 }, ...(needsNota ? [{ wch: 10 }] : [])];
 
   const instrucciones = XLSX.utils.aoa_to_sheet([
+    [`Plantilla: ${plantilla.nombre}`],
     ['Cómo llenar la hoja «Participantes»'],
     [''],
     ['nombre', 'Obligatorio. Nombre del participante tal como se mostrará en el mensaje.'],
     ['telefono', 'Obligatorio. 8 dígitos (98765432) o 11 con código de país (50498765432).'],
-    ['nota', 'Solo si la plantilla incluye la nota del participante; si no, déjala vacía.'],
+    ...(needsNota ? [['nota', 'Obligatorio. Nota del participante que se incluirá en el mensaje.']] : []),
     [''],
     ['No cambies los encabezados de la primera fila. Borra esta hoja si lo prefieres.'],
   ]);
@@ -41,7 +59,10 @@ export function buildParticipantsTemplate() {
   XLSX.utils.book_append_sheet(workbook, participantes, 'Participantes');
   XLSX.utils.book_append_sheet(workbook, instrucciones, 'Instrucciones');
 
-  return XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
+  return {
+    buffer: XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' }),
+    filename: `participantes-${slugify(plantilla.nombre) || 'plantilla'}.xlsx`,
+  };
 }
 
 function normalizeKey(key) {
