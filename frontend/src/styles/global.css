@@ -2324,6 +2324,7 @@ a.support-item-value:hover { color: var(--color-primary); text-decoration: under
 }
 
 .dash-legend-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+.dash-legend-dot.blue { background: #2563eb; }
 .dash-legend-dot.green { background: #0e9f6e; }
 .dash-legend-dot.purple { background: #7c3aed; }
 .dash-legend-dot.red { background: #dc2626; }

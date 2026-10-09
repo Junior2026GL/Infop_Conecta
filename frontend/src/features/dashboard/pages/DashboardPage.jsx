@@ -16,6 +16,7 @@ import {
   IconMoonStars,
   IconUpload,
 } from '../../../components/icons.jsx';
+import { SHOW_DELIVERY_STATS } from '../../../config/env.js';
 import { getStats } from '../services/dashboard.service.js';
 import { getCostoMensaje } from '../../settings/services/settings.service.js';
 import { getMySaldo, getMisMovimientos } from '../../settings/services/wallet.service.js';
@@ -140,19 +141,33 @@ export default function DashboardPage() {
 
   const totalMensajes = stats?.mensajes?.total ?? 0;
 
-  const cards = [
-    { label: 'Enviados', value: stats?.mensajes?.enviados, Icon: IconSend, tone: 'blue', kind: 'count' },
-    { label: 'Entregados', value: stats?.mensajes?.entregados, Icon: IconCheck, tone: 'green', kind: 'count' },
-    { label: 'Leídos', value: stats?.mensajes?.leidos, Icon: IconEye, tone: 'purple', kind: 'count' },
-    { label: 'Fallidos', value: stats?.mensajes?.fallidos, Icon: IconAlert, tone: 'red', kind: 'count' },
-    { label: 'Costo por mensaje', value: costoMensaje, Icon: IconCost, tone: 'amber', kind: 'money' },
-  ];
+  const fallidos = stats?.mensajes?.fallidos ?? 0;
+  const aceptados = Math.max(0, totalMensajes - fallidos);
 
-  const embudo = [
-    { label: 'Entregados', value: stats?.mensajes?.entregados ?? 0, tone: 'green' },
-    { label: 'Leídos', value: stats?.mensajes?.leidos ?? 0, tone: 'purple' },
-    { label: 'Fallidos', value: stats?.mensajes?.fallidos ?? 0, tone: 'red' },
-  ];
+  const cards = SHOW_DELIVERY_STATS
+    ? [
+        { label: 'Enviados', value: stats?.mensajes?.enviados, Icon: IconSend, tone: 'blue', kind: 'count' },
+        { label: 'Entregados', value: stats?.mensajes?.entregados, Icon: IconCheck, tone: 'green', kind: 'count' },
+        { label: 'Leídos', value: stats?.mensajes?.leidos, Icon: IconEye, tone: 'purple', kind: 'count' },
+        { label: 'Fallidos', value: stats?.mensajes?.fallidos, Icon: IconAlert, tone: 'red', kind: 'count' },
+        { label: 'Costo por mensaje', value: costoMensaje, Icon: IconCost, tone: 'amber', kind: 'money' },
+      ]
+    : [
+        { label: 'Enviados a WhatsApp', value: aceptados, Icon: IconSend, tone: 'blue', kind: 'count' },
+        { label: 'Fallidos', value: stats?.mensajes?.fallidos, Icon: IconAlert, tone: 'red', kind: 'count' },
+        { label: 'Costo por mensaje', value: costoMensaje, Icon: IconCost, tone: 'amber', kind: 'money' },
+      ];
+
+  const embudo = SHOW_DELIVERY_STATS
+    ? [
+        { label: 'Entregados', value: stats?.mensajes?.entregados ?? 0, tone: 'green' },
+        { label: 'Leídos', value: stats?.mensajes?.leidos ?? 0, tone: 'purple' },
+        { label: 'Fallidos', value: stats?.mensajes?.fallidos ?? 0, tone: 'red' },
+      ]
+    : [
+        { label: 'Enviados a WhatsApp', value: aceptados, tone: 'blue' },
+        { label: 'Fallidos', value: fallidos, tone: 'red' },
+      ];
 
   const alcanzaPara = costoMensaje > 0 && misaldo !== null ? Math.floor(misaldo / costoMensaje) : null;
   const saldoBajo = alcanzaPara !== null && alcanzaPara < UMBRAL_MENSAJES;
@@ -247,7 +262,7 @@ export default function DashboardPage() {
         <section className="dash-panel">
           <header className="dash-panel-head">
             <div>
-              <h2>Rendimiento de entrega</h2>
+              <h2>{SHOW_DELIVERY_STATS ? 'Rendimiento de entrega' : 'Resumen de envíos'}</h2>
               <p>Distribución sobre {formatNumero(totalMensajes)} mensaje{totalMensajes === 1 ? '' : 's'} registrado{totalMensajes === 1 ? '' : 's'}.</p>
             </div>
             <button className="btn-link" onClick={() => navigate('/historial')}>
