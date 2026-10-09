@@ -1,6 +1,13 @@
 import { db } from '../../infrastructure/database/mysql.js';
 
-export async function getStats() {
+/**
+ * Totales de mensajes. Con `enviadoPor` solo cuenta los mensajes enviados por ese
+ * usuario (tutores); sin él cuenta todos (Super Admin y Admin).
+ */
+export async function getStats({ enviadoPor } = {}) {
+  const where = enviadoPor ? 'WHERE enviado_por = ?' : '';
+  const params = enviadoPor ? [enviadoPor] : [];
+
   const [[messages]] = await db.query(
     `SELECT
       COUNT(*) total,
@@ -8,7 +15,9 @@ export async function getStats() {
       SUM(estado = 'DELIVERED') delivered,
       SUM(estado = 'READ') read_count,
       SUM(estado = 'FAILED') failed
-     FROM mensajes`
+     FROM mensajes
+     ${where}`,
+    params
   );
 
   return {
