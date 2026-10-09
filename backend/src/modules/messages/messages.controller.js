@@ -2,7 +2,7 @@ import * as service from './messages.service.js';
 
 export async function list(req, res, next) {
   try {
-    res.json({ ok: true, data: await service.list(req.user) });
+    res.json({ ok: true, data: await service.list(req.user, req.query) });
   } catch (error) {
     next(error);
   }

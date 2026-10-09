@@ -22,6 +22,11 @@ export async function sendCampaign(id) {
   return data.data;
 }
 
+export async function retryCampaign(id) {
+  const { data } = await api.post(`/campaigns/${id}/reintentar`);
+  return data.data;
+}
+
 export async function removeDestinatario(campaignId, destinatarioId) {
   const { data } = await api.delete(`/campaigns/${campaignId}/destinatarios/${destinatarioId}`);
   return data.data;

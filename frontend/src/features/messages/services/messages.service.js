@@ -5,7 +5,7 @@ export async function sendTemplateMessage(payload) {
   return data.data;
 }
 
-export async function listMessages() {
-  const { data } = await api.get('/messages');
+export async function listMessages(params = {}) {
+  const { data } = await api.get('/messages', { params });
   return data.data;
 }

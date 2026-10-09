@@ -28,6 +28,7 @@ import {
   getCampaign,
   importCampaign,
   sendCampaign,
+  retryCampaign,
   removeDestinatario,
   updateDestinatario,
   addDestinatario,
@@ -40,6 +41,18 @@ const estadoLabels = {
 };
 
 const PAGE_SIZE = 20;
+
+// Debe coincidir con SEND_DELAY_MS del backend (campaigns.service.js): pausa entre mensajes.
+const SEGUNDOS_POR_MENSAJE = 5;
+
+function formatDuracion(segundos) {
+  const total = Math.max(0, Math.round(segundos));
+  if (total < 60) return `${total} s`;
+  const horas = Math.floor(total / 3600);
+  const minutos = Math.round((total % 3600) / 60);
+  if (horas === 0) return `${minutos} min`;
+  return minutos === 0 ? `${horas} h` : `${horas} h ${minutos} min`;
+}
 
 const ETIQUETAS_CAMPOS_FIJOS = {
   enlace_grupo: 'Enlace del grupo de WhatsApp',
@@ -197,6 +210,10 @@ export default function CampaignsPage() {
   const [error, setError] = useState('');
   const [importing, setImporting] = useState(false);
   const [sending, setSending] = useState(false);
+  const [showConfirmSend, setShowConfirmSend] = useState(false);
+  const [retrying, setRetrying] = useState(false);
+  const [soloInvalidos, setSoloInvalidos] = useState(false);
+  const [sendTotal, setSendTotal] = useState(0);
   const [removingId, setRemovingId] = useState(null);
   const [confirmingRemove, setConfirmingRemove] = useState(null);
 
@@ -295,6 +312,8 @@ export default function CampaignsPage() {
     try {
       const data = await importCampaign(formData);
       setCampaign(data);
+      setSendTotal(0);
+      setSoloInvalidos(false);
       setTab('nueva');
       setShowImportModal(false);
       setPlantillaId('');
@@ -314,9 +333,31 @@ export default function CampaignsPage() {
     }
   }
 
+  async function handleRetry() {
+    if (!campaign) return;
+    setError('');
+    setRetrying(true);
+    try {
+      const data = await retryCampaign(campaign.id);
+      setCampaign(data);
+      setSoloInvalidos(false);
+      toast.success('Campaña lista para reenviar. Revisa los datos y pulsa Enviar mensajes.');
+      const historyData = await listCampaigns();
+      setHistory(historyData);
+    } catch (err) {
+      const message = err.response?.data?.message || 'No se pudo preparar el reenvío';
+      setError(message);
+      toast.error(message);
+    } finally {
+      setRetrying(false);
+    }
+  }
+
   async function handleSend() {
     if (!campaign) return;
     setError('');
+    setShowConfirmSend(false);
+    setSendTotal(pendientes);
     setSending(true);
     try {
       await sendCampaign(campaign.id);
@@ -400,6 +441,8 @@ export default function CampaignsPage() {
 
   async function openCampaign(id) {
     setError('');
+    setSendTotal(0);
+    setSoloInvalidos(false);
     try {
       const data = await getCampaign(id);
       setCampaign(data);
@@ -419,6 +462,22 @@ export default function CampaignsPage() {
   const costoEstimadoEnvio = pendientes * costoUnitario;
   const saldoInsuficiente = campaign?.estado === 'BORRADOR' && misaldo !== null && costoEstimadoEnvio > misaldo;
   const faltante = saldoInsuficiente ? costoEstimadoEnvio - misaldo : 0;
+
+  const yaEnviados = campaign?.destinatarios?.filter((d) => d.estado === 'ENVIADO').length || 0;
+  const noEnviados = pendientes + invalidos;
+  const puedeReintentar = campaign?.estado === 'FINALIZADA' && noEnviados > 0;
+  const quedoPorSaldo = campaign?.estado === 'FINALIZADA' && pendientes > 0;
+
+  // Progreso del envío en curso. Si se abrió la campaña a mitad del envío no conocemos el
+  // total inicial, así que se estima con lo ya enviado más lo que falta.
+  const totalEnvio = sendTotal > 0 ? sendTotal : pendientes + yaEnviados;
+  const procesados = Math.max(0, Math.min(totalEnvio, totalEnvio - pendientes));
+  const progreso = totalEnvio > 0 ? Math.round((procesados / totalEnvio) * 100) : 0;
+  const segundosRestantes = pendientes * SEGUNDOS_POR_MENSAJE;
+
+  const destinatariosVisibles = soloInvalidos
+    ? (campaign?.destinatarios || []).filter((d) => d.estado === 'FALLIDO' && !d.mensaje_id)
+    : campaign?.destinatarios || [];
 
   const alcanzaPara = costoMensaje > 0 && misaldo !== null ? Math.floor(misaldo / costoMensaje) : null;
 
@@ -636,10 +695,54 @@ export default function CampaignsPage() {
                 </div>
               )}
 
-              <div style={{ display: 'flex', gap: 10, marginBottom: 16 }}>
+              {campaign.estado === 'BORRADOR' && invalidos > 0 && (
+                <div className="alert warning campaign-balance-alert">
+                  <IconAlert />
+                  <div>
+                    <b>{invalidos} registro{invalidos === 1 ? '' : 's'} con problemas no se enviará{invalidos === 1 ? '' : 'n'}.</b>
+                    <span>
+                      Corrígelos con el lápiz o quítalos. Los que sigan inválidos se omiten y no se cobran.{' '}
+                      <button type="button" className="btn-link" onClick={() => setSoloInvalidos((v) => !v)}>
+                        {soloInvalidos ? 'Ver todos los registros' : 'Ver solo los inválidos'}
+                      </button>
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              {campaign.estado === 'ENVIANDO' && (
+                <div className="campaign-progress">
+                  <div className="campaign-progress-head">
+                    <b>Enviando mensajes… {progreso}%</b>
+                    <span>
+                      {procesados} de {totalEnvio} procesados
+                      {pendientes > 0 && ` · faltan unos ${formatDuracion(segundosRestantes)}`}
+                    </span>
+                  </div>
+                  <div className="campaign-progress-track">
+                    <div className="campaign-progress-fill" style={{ width: `${progreso}%` }} />
+                  </div>
+                  <small>Puedes salir de esta pantalla: el envío continúa en segundo plano.</small>
+                </div>
+              )}
+
+              {quedoPorSaldo && (
+                <div className="alert warning campaign-balance-alert">
+                  <IconAlert />
+                  <div>
+                    <b>El envío se detuvo antes de terminar.</b>
+                    <span>
+                      Quedaron {pendientes} mensaje{pendientes === 1 ? '' : 's'} sin enviar, normalmente porque el saldo se agotó.
+                      {esSuperAdmin ? ' Recarga saldo desde Saldos' : ' Solicita una recarga al Super Admin'} y pulsa «Reenviar no enviados».
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              <div style={{ display: 'flex', gap: 10, marginBottom: 16, flexWrap: 'wrap' }}>
                 <button
                   className="btn-primary"
-                  onClick={handleSend}
+                  onClick={() => setShowConfirmSend(true)}
                   disabled={sending || campaign.estado !== 'BORRADOR' || pendientes === 0 || saldoInsuficiente}
                   title={saldoInsuficiente ? 'Saldo insuficiente para enviar esta campaña' : undefined}
                 >
@@ -650,6 +753,12 @@ export default function CampaignsPage() {
                 {campaign.estado === 'BORRADOR' && (
                   <button className="btn-success" onClick={() => setShowAddManual(true)}>
                     <IconPlus /> Agregar manualmente
+                  </button>
+                )}
+
+                {puedeReintentar && (
+                  <button className="btn-outline" onClick={handleRetry} disabled={retrying}>
+                    <IconSend /> {retrying ? 'Preparando...' : `Reenviar no enviados (${noEnviados})`}
                   </button>
                 )}
               </div>
@@ -667,7 +776,7 @@ export default function CampaignsPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {campaign.destinatarios?.map((d) => (
+                    {destinatariosVisibles.map((d) => (
                       <tr key={d.id}>
                         <td title={d.nombre || ''}>{d.nombre || '-'}</td>
                         <td title={d.telefono || ''}>{d.telefono || '-'}</td>
@@ -689,25 +798,27 @@ export default function CampaignsPage() {
                         <td title={d.error_mensaje || ''}>{d.error_mensaje || '-'}</td>
                         {campaign.estado === 'BORRADOR' && (
                           <td>
-                            <div className="actions-row">
-                              <button
-                                type="button"
-                                className="icon-btn"
-                                title="Editar destinatario"
-                                onClick={() => startEditDestinatario(d)}
-                              >
-                                <IconEdit />
-                              </button>
-                              <button
-                                type="button"
-                                className="icon-btn danger"
-                                title="Quitar de la campaña"
-                                onClick={() => setConfirmingRemove(d)}
-                                disabled={removingId === d.id}
-                              >
-                                <IconTrash />
-                              </button>
-                            </div>
+                            {d.estado !== 'ENVIADO' && (
+                              <div className="actions-row">
+                                <button
+                                  type="button"
+                                  className="icon-btn"
+                                  title="Editar destinatario"
+                                  onClick={() => startEditDestinatario(d)}
+                                >
+                                  <IconEdit />
+                                </button>
+                                <button
+                                  type="button"
+                                  className="icon-btn danger"
+                                  title="Quitar de la campaña"
+                                  onClick={() => setConfirmingRemove(d)}
+                                  disabled={removingId === d.id}
+                                >
+                                  <IconTrash />
+                                </button>
+                              </div>
+                            )}
                           </td>
                         )}
                       </tr>
@@ -795,6 +906,56 @@ export default function CampaignsPage() {
             onPageChange={setHistoryPage}
           />
         </div>
+      )}
+
+      {showConfirmSend && campaign && (
+        <Modal
+          title="Confirmar envío"
+          subtitle="Revisa el resumen antes de enviar. Una vez iniciado, no se puede cancelar."
+          icon={<IconSend />}
+          onClose={() => setShowConfirmSend(false)}
+          width={460}
+          footer={
+            <>
+              <button type="button" className="btn-outline" onClick={() => setShowConfirmSend(false)}>
+                Cancelar
+              </button>
+              <button type="button" className="btn-primary" onClick={handleSend} disabled={sending}>
+                <IconSend /> Sí, enviar {pendientes} mensaje{pendientes === 1 ? '' : 's'}
+              </button>
+            </>
+          }
+        >
+          <div className="campaign-cost-box rows">
+            <div>
+              <span><IconSend width={14} height={14} /> Mensajes a enviar</span>
+              <strong>{pendientes}</strong>
+            </div>
+            {invalidos > 0 && (
+              <div>
+                <span><IconAlert width={14} height={14} /> Omitidos por datos inválidos</span>
+                <strong>{invalidos}</strong>
+              </div>
+            )}
+            <div>
+              <span><IconCost width={14} height={14} /> Costo total</span>
+              <strong>L. {costoEstimadoEnvio.toFixed(2)}</strong>
+            </div>
+            {misaldo !== null && (
+              <div>
+                <span><IconWallet width={14} height={14} /> Saldo después del envío</span>
+                <strong>L. {Math.max(0, misaldo - costoEstimadoEnvio).toFixed(2)}</strong>
+              </div>
+            )}
+            <div>
+              <span><IconHistory width={14} height={14} /> Tiempo estimado</span>
+              <strong>{formatDuracion(pendientes * SEGUNDOS_POR_MENSAJE)}</strong>
+            </div>
+          </div>
+          <p style={{ margin: '12px 0 0', color: '#667085', fontSize: 13 }}>
+            Se envía un mensaje cada {SEGUNDOS_POR_MENSAJE} segundos. Puedes cerrar esta pantalla mientras tanto.
+          </p>
+        </Modal>
       )}
 
       {confirmingRemove && (

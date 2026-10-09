@@ -23,22 +23,47 @@ export async function createMessage(data) {
   return result.insertId;
 }
 
-export async function listMessages({ enviadoPor } = {}) {
-  const where = enviadoPor ? 'WHERE m.enviado_por = ?' : '';
-  const params = enviadoPor ? [enviadoPor] : [];
+const MAX_MESSAGES = 10000;
+
+export async function listMessages({ enviadoPor, estado, campaniaId, desde, hasta } = {}) {
+  const conditions = [];
+  const params = [];
+
+  if (enviadoPor) {
+    conditions.push('m.enviado_por = ?');
+    params.push(enviadoPor);
+  }
+  if (estado) {
+    conditions.push('m.estado = ?');
+    params.push(estado);
+  }
+  if (campaniaId) {
+    conditions.push('c.id = ?');
+    params.push(campaniaId);
+  }
+  if (desde) {
+    conditions.push('m.created_at >= ?');
+    params.push(`${desde} 00:00:00`);
+  }
+  if (hasta) {
+    conditions.push('m.created_at <= ?');
+    params.push(`${hasta} 23:59:59`);
+  }
+
+  const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
 
   const [rows] = await db.query(
     `SELECT m.id, m.telefono, m.tipo, m.contenido, m.template_name,
             m.meta_message_id, m.estado, m.error_mensaje, m.created_at,
             COALESCE(p.nombre_completo, cd.nombre) AS nombre_completo,
-            c.nombre AS campania_nombre
+            c.id AS campania_id, c.nombre AS campania_nombre
      FROM mensajes m
      LEFT JOIN participantes p ON p.id = m.participante_id
      LEFT JOIN campania_destinatarios cd ON cd.mensaje_id = m.id
      LEFT JOIN campanias c ON c.id = cd.campania_id
      ${where}
      ORDER BY m.id DESC
-     LIMIT 500`,
+     LIMIT ${MAX_MESSAGES}`,
     params
   );
   return rows;

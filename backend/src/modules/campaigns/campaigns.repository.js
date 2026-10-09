@@ -126,6 +126,50 @@ export async function markAsSending(id) {
   return result.affectedRows > 0;
 }
 
+/**
+ * Indica si otro destinatario de la misma campaña ya usa ese teléfono y va a
+ * recibir (o ya recibió) el mensaje. Evita enviar y cobrar dos veces al mismo número.
+ */
+export async function phoneInUse(campaniaId, telefono, excludeId = 0) {
+  const [rows] = await db.query(
+    `SELECT 1 FROM campania_destinatarios
+     WHERE campania_id = ? AND telefono = ? AND estado IN ('PENDIENTE', 'ENVIADO') AND id <> ?
+     LIMIT 1`,
+    [campaniaId, telefono, excludeId]
+  );
+  return rows.length > 0;
+}
+
+/**
+ * Reabre una campaña FINALIZADA como BORRADOR en una sola operación atómica,
+ * para poder reenviar los mensajes que fallaron o quedaron pendientes.
+ */
+export async function reopenCampaign(id) {
+  const [result] = await db.query(
+    `UPDATE campanias SET estado = 'BORRADOR' WHERE id = ? AND estado = 'FINALIZADA'`,
+    [id]
+  );
+  return result.affectedRows > 0;
+}
+
+export async function listDestinatariosFallidos(campaniaId) {
+  const [rows] = await db.query(
+    `SELECT id, nombre, telefono, nota
+     FROM campania_destinatarios
+     WHERE campania_id = ? AND estado = 'FALLIDO'
+     ORDER BY id ASC`,
+    [campaniaId]
+  );
+  return rows;
+}
+
+export async function decrementFallidos(id, cantidad = 1) {
+  await db.query(
+    'UPDATE campanias SET fallidos = GREATEST(fallidos - ?, 0) WHERE id = ?',
+    [cantidad, id]
+  );
+}
+
 export async function findDestinatarioById(id) {
   const [rows] = await db.query(
     `SELECT id, campania_id, estado FROM campania_destinatarios WHERE id = ? LIMIT 1`,

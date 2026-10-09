@@ -71,6 +71,16 @@ function evaluateDestinatario(row, needsNota) {
   return { nombre, telefono, nota, estado: 'PENDIENTE', error_mensaje: null };
 }
 
+// Igual que evaluateDestinatario, pero además marca como fallido el teléfono que
+// ya está en la campaña (otro destinatario pendiente o ya enviado).
+async function evaluateInCampaign(row, needsNota, campaignId, excludeId = 0) {
+  const evaluado = evaluateDestinatario(row, needsNota);
+  if (evaluado.estado === 'PENDIENTE' && await repository.phoneInUse(campaignId, evaluado.telefono, excludeId)) {
+    return { ...evaluado, estado: 'FALLIDO', error_mensaje: 'Teléfono duplicado en la campaña' };
+  }
+  return evaluado;
+}
+
 export async function importFile({ file, plantillaId, nombre, curso, valoresFijos }, userId) {
   if (!file) throw new AppError('Debes adjuntar un archivo Excel o CSV');
   if (!curso?.trim()) throw new AppError('El nombre del curso es obligatorio');
@@ -89,7 +99,17 @@ export async function importFile({ file, plantillaId, nombre, curso, valoresFijo
 
   const rows = extractRows(rawRows);
 
-  const destinatarios = rows.map((row) => evaluateDestinatario(row, needsNota));
+  const telefonosVistos = new Set();
+  const destinatarios = rows.map((row) => {
+    const evaluado = evaluateDestinatario(row, needsNota);
+    if (evaluado.estado !== 'PENDIENTE') return evaluado;
+
+    if (telefonosVistos.has(evaluado.telefono)) {
+      return { ...evaluado, estado: 'FALLIDO', error_mensaje: 'Teléfono duplicado en el archivo' };
+    }
+    telefonosVistos.add(evaluado.telefono);
+    return evaluado;
+  });
 
   const campaniaId = await repository.createCampaign({
     plantillaId: plantilla.id,
@@ -141,6 +161,10 @@ export async function removeDestinatario(campaignId, destinatarioId, requestUser
     throw new AppError('Destinatario no encontrado', 404);
   }
 
+  if (destinatario.estado === 'ENVIADO') {
+    throw new AppError('Este destinatario ya recibió el mensaje y no se puede quitar');
+  }
+
   await repository.deleteDestinatario(destinatarioId);
   await repository.decrementTotalRegistros(campaignId, 1);
 
@@ -161,8 +185,17 @@ export async function updateDestinatario(campaignId, destinatarioId, { nombre, t
     throw new AppError('Destinatario no encontrado', 404);
   }
 
+  if (destinatario.estado === 'ENVIADO') {
+    throw new AppError('Este destinatario ya recibió el mensaje y no se puede editar');
+  }
+
   const plantilla = await resolveTemplate(campaign.plantilla_id);
-  const evaluado = evaluateDestinatario({ nombre, telefono, nota }, requiresNota(plantilla));
+  const evaluado = await evaluateInCampaign(
+    { nombre, telefono, nota },
+    requiresNota(plantilla),
+    campaignId,
+    destinatarioId
+  );
 
   await repository.updateDestinatarioDatos(destinatarioId, {
     nombre: evaluado.nombre,
@@ -185,12 +218,59 @@ export async function addDestinatario(campaignId, { nombre, telefono, nota }, re
   }
 
   const plantilla = await resolveTemplate(campaign.plantilla_id);
-  const evaluado = evaluateDestinatario({ nombre, telefono, nota }, requiresNota(plantilla));
+  const evaluado = await evaluateInCampaign({ nombre, telefono, nota }, requiresNota(plantilla), campaignId);
 
   await repository.insertDestinatario(campaignId, evaluado);
   await repository.incrementTotalRegistros(campaignId, 1);
 
   return getById(campaignId, requestUser);
+}
+
+/**
+ * Reabre una campaña finalizada para reenviar lo que no llegó: los destinatarios
+ * que fallaron al enviarse y los que quedaron pendientes (por ejemplo, porque el
+ * saldo se acabó a mitad del envío). Los que fallaron por datos inválidos solo
+ * se recuperan si ya fueron corregidos. Después el usuario envía como siempre.
+ */
+export async function retryFailed(id, requestUser) {
+  const campaign = await repository.findCampaignById(id);
+  if (!campaign) throw new AppError('Campaña no encontrada', 404);
+  assertOwnership(campaign, requestUser);
+
+  const reabierta = await repository.reopenCampaign(id);
+  if (!reabierta) {
+    throw new AppError('Solo puedes reintentar una campaña que ya terminó de enviarse');
+  }
+
+  const plantilla = await resolveTemplate(campaign.plantilla_id);
+  const needsNota = requiresNota(plantilla);
+
+  const fallidos = await repository.listDestinatariosFallidos(id);
+  let recuperados = 0;
+
+  for (const destinatario of fallidos) {
+    const evaluado = await evaluateInCampaign(destinatario, needsNota, id, destinatario.id);
+    if (evaluado.estado !== 'PENDIENTE') continue;
+
+    await repository.updateDestinatarioDatos(destinatario.id, {
+      nombre: evaluado.nombre,
+      telefono: evaluado.telefono,
+      nota: evaluado.nota,
+      estado: 'PENDIENTE',
+      errorMensaje: null,
+    });
+    recuperados += 1;
+  }
+
+  if (recuperados > 0) await repository.decrementFallidos(id, recuperados);
+
+  const pendientes = await repository.listDestinatariosPendientes(id);
+  if (pendientes.length === 0) {
+    await repository.updateCampaignEstado(id, 'FINALIZADA');
+    throw new AppError('No hay mensajes para reenviar. Los fallidos restantes tienen datos inválidos: corrígelos o quítalos.');
+  }
+
+  return getById(id, requestUser);
 }
 
 export function reportUsuarios() {

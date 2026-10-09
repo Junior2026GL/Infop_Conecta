@@ -4,9 +4,18 @@ import { normalizePhone } from '../../shared/utils/phone.js';
 import { AppError } from '../../shared/errors/AppError.js';
 import { ROLES } from '../../shared/constants/roles.js';
 
-export function list(requestUser) {
+const ESTADOS_VALIDOS = ['PENDIENTE', 'SENT', 'DELIVERED', 'READ', 'FAILED'];
+const FECHA_REGEX = /^\d{4}-\d{2}-\d{2}$/;
+
+export function list(requestUser, query = {}) {
   const enviadoPor = requestUser?.rol === ROLES.NORMAL ? requestUser.sub : undefined;
-  return repository.listMessages({ enviadoPor });
+
+  const estado = ESTADOS_VALIDOS.includes(query.estado) ? query.estado : undefined;
+  const campaniaId = Number(query.campaniaId) > 0 ? Number(query.campaniaId) : undefined;
+  const desde = FECHA_REGEX.test(query.desde || '') ? query.desde : undefined;
+  const hasta = FECHA_REGEX.test(query.hasta || '') ? query.hasta : undefined;
+
+  return repository.listMessages({ enviadoPor, estado, campaniaId, desde, hasta });
 }
 
 export async function sendTemplate(data, userId) {

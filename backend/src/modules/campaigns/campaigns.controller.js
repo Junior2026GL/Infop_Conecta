@@ -101,6 +101,20 @@ export async function addDestinatario(req, res, next) {
   }
 }
 
+export async function retryFailed(req, res, next) {
+  try {
+    const data = await service.retryFailed(req.params.id, req.user);
+    await recordAudit(req, {
+      accion: 'ACTUALIZAR',
+      modulo: 'CAMPANAS',
+      descripcion: `Campaña #${req.params.id} reabierta para reenviar mensajes fallidos o pendientes`,
+    });
+    res.json({ ok: true, data });
+  } catch (error) {
+    next(error);
+  }
+}
+
 export async function send(req, res, next) {
   try {
     const data = await service.send(req.params.id, req.user.sub, req.user);

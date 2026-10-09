@@ -19,5 +19,6 @@ router.post('/:id/destinatarios', controller.addDestinatario);
 router.put('/:id/destinatarios/:destinatarioId', controller.updateDestinatario);
 router.delete('/:id/destinatarios/:destinatarioId', controller.removeDestinatario);
 router.post('/:id/enviar', controller.send);
+router.post('/:id/reintentar', controller.retryFailed);
 
 export default router;

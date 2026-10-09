@@ -2,7 +2,9 @@ import { useEffect, useMemo, useState } from 'react';
 import PageHeader from '../../../components/PageHeader.jsx';
 import Pagination from '../../../components/Pagination.jsx';
 import { IconSearch, IconSend, IconCheck, IconEye, IconAlert } from '../../../components/icons.jsx';
+import { SHOW_DELIVERY_STATS } from '../../../config/env.js';
 import { listMessages } from '../services/messages.service.js';
+import { listCampaigns } from '../../campaigns/services/campaigns.service.js';
 
 const PAGE_SIZE = 20;
 
@@ -14,6 +16,11 @@ const estadoLabels = {
   FAILED: 'Fallido',
 };
 
+// Sin webhooks de Meta solo se conocen estos dos estados.
+const estadosFiltro = SHOW_DELIVERY_STATS
+  ? ['SENT', 'DELIVERED', 'READ', 'FAILED']
+  : ['SENT', 'FAILED'];
+
 function initials(name) {
   if (!name) return '?';
   const parts = name.trim().split(/\s+/);
@@ -22,20 +29,68 @@ function initials(name) {
 
 function formatFecha(valor) {
   if (!valor) return '-';
-  return new Date(valor.replace(' ', 'T')).toLocaleString('es-HN', {
+  return new Date(String(valor).replace(' ', 'T')).toLocaleString('es-HN', {
     dateStyle: 'medium',
     timeStyle: 'short',
   });
 }
 
+function csvCell(valor) {
+  return `"${String(valor ?? '').replace(/"/g, '""')}"`;
+}
+
+// CSV con BOM y separador explícito (;) para que Excel lo abra en columnas y con tildes.
+function exportarCsv(rows) {
+  const encabezado = ['Fecha', 'Destinatario', 'Teléfono', 'Campaña', 'Plantilla', 'Estado', 'Detalle del error'];
+  const lineas = rows.map((item) => [
+    formatFecha(item.created_at),
+    item.nombre_completo,
+    item.telefono,
+    item.campania_nombre,
+    item.template_name,
+    estadoLabels[item.estado] || item.estado,
+    item.error_mensaje,
+  ].map(csvCell).join(';'));
+
+  const contenido = `﻿sep=;\r\n${[encabezado.map(csvCell).join(';'), ...lineas].join('\r\n')}`;
+  const blob = new Blob([contenido], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const enlace = document.createElement('a');
+  enlace.href = url;
+  enlace.download = `historial-mensajes-${new Date().toISOString().slice(0, 10)}.csv`;
+  document.body.appendChild(enlace);
+  enlace.click();
+  enlace.remove();
+  URL.revokeObjectURL(url);
+}
+
 export default function MessageHistoryPage() {
   const [items, setItems] = useState([]);
+  const [campaigns, setCampaigns] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const [estado, setEstado] = useState('');
+  const [campaniaId, setCampaniaId] = useState('');
+  const [desde, setDesde] = useState('');
+  const [hasta, setHasta] = useState('');
   const [page, setPage] = useState(1);
 
   useEffect(() => {
-    listMessages().then(setItems).catch(console.error);
+    listCampaigns().then(setCampaigns).catch(console.error);
   }, []);
+
+  useEffect(() => {
+    setLoading(true);
+    listMessages({
+      estado: estado || undefined,
+      campaniaId: campaniaId || undefined,
+      desde: desde || undefined,
+      hasta: hasta || undefined,
+    })
+      .then(setItems)
+      .catch(console.error)
+      .finally(() => setLoading(false));
+  }, [estado, campaniaId, desde, hasta]);
 
   const filtered = useMemo(() => items.filter((item) => {
     const term = search.trim().toLowerCase();
@@ -50,40 +105,110 @@ export default function MessageHistoryPage() {
 
   useEffect(() => {
     setPage(1);
-  }, [search]);
+  }, [search, estado, campaniaId, desde, hasta]);
 
   const paginated = useMemo(
     () => filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE),
     [filtered, page]
   );
 
-  const total = items.length;
+  const hayFiltros = Boolean(search || estado || campaniaId || desde || hasta);
 
-  const cards = [
-    { label: 'Total', value: total, Icon: IconSend, tone: 'blue', isTotal: true },
-    { label: 'Enviados', value: items.filter((i) => i.estado === 'SENT').length, Icon: IconCheck, tone: 'green' },
-    { label: 'Leídos', value: items.filter((i) => i.estado === 'READ').length, Icon: IconEye, tone: 'purple' },
-    { label: 'Fallidos', value: items.filter((i) => i.estado === 'FAILED').length, Icon: IconAlert, tone: 'red' },
-  ];
+  function limpiarFiltros() {
+    setSearch('');
+    setEstado('');
+    setCampaniaId('');
+    setDesde('');
+    setHasta('');
+  }
+
+  const total = filtered.length;
+  const fallidos = filtered.filter((i) => i.estado === 'FAILED').length;
+
+  const cards = SHOW_DELIVERY_STATS
+    ? [
+        { label: 'Total', value: total, Icon: IconSend, tone: 'blue', isTotal: true },
+        { label: 'Enviados', value: filtered.filter((i) => i.estado === 'SENT').length, Icon: IconCheck, tone: 'green' },
+        { label: 'Leídos', value: filtered.filter((i) => i.estado === 'READ').length, Icon: IconEye, tone: 'purple' },
+        { label: 'Fallidos', value: fallidos, Icon: IconAlert, tone: 'red' },
+      ]
+    : [
+        { label: 'Total', value: total, Icon: IconSend, tone: 'blue', isTotal: true },
+        { label: 'Enviados a WhatsApp', value: total - fallidos, Icon: IconCheck, tone: 'green' },
+        { label: 'Fallidos', value: fallidos, Icon: IconAlert, tone: 'red' },
+      ];
 
   return (
     <>
       <PageHeader
         title="Historial"
-        description="Seguimiento de mensajes enviados, entregados, leídos o fallidos."
+        description={
+          SHOW_DELIVERY_STATS
+            ? 'Seguimiento de mensajes enviados, entregados, leídos o fallidos.'
+            : 'Seguimiento de los mensajes enviados y fallidos.'
+        }
         actions={
-          <div className="input-icon" style={{ minWidth: 260 }}>
-            <IconSearch />
-            <input
-              placeholder="Buscar por nombre, teléfono o plantilla..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
+          <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+            <div className="input-icon" style={{ minWidth: 260 }}>
+              <IconSearch />
+              <input
+                placeholder="Buscar por nombre, teléfono o plantilla..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+            </div>
+            <button
+              type="button"
+              className="btn-outline"
+              onClick={() => exportarCsv(filtered)}
+              disabled={filtered.length === 0}
+              title="Descargar los mensajes filtrados en un archivo que abre Excel"
+            >
+              Exportar a Excel
+            </button>
           </div>
         }
       />
 
       <div className="history-content">
+        <div className="history-filters">
+          <label>
+            <span>Campaña</span>
+            <select value={campaniaId} onChange={(e) => setCampaniaId(e.target.value)}>
+              <option value="">Todas</option>
+              {campaigns.map((c) => (
+                <option key={c.id} value={c.id}>{c.nombre}</option>
+              ))}
+            </select>
+          </label>
+
+          <label>
+            <span>Estado</span>
+            <select value={estado} onChange={(e) => setEstado(e.target.value)}>
+              <option value="">Todos</option>
+              {estadosFiltro.map((value) => (
+                <option key={value} value={value}>{estadoLabels[value]}</option>
+              ))}
+            </select>
+          </label>
+
+          <label>
+            <span>Desde</span>
+            <input type="date" value={desde} max={hasta || undefined} onChange={(e) => setDesde(e.target.value)} />
+          </label>
+
+          <label>
+            <span>Hasta</span>
+            <input type="date" value={hasta} min={desde || undefined} onChange={(e) => setHasta(e.target.value)} />
+          </label>
+
+          {hayFiltros && (
+            <button type="button" className="btn-link" onClick={limpiarFiltros}>
+              Limpiar filtros
+            </button>
+          )}
+        </div>
+
         <div className="dash-kpi-grid">
           {cards.map(({ label, value, Icon, tone, isTotal }) => (
             <div className={`dash-kpi ${tone}`} key={label}>
@@ -121,7 +246,10 @@ export default function MessageHistoryPage() {
                   </td>
                   <td>{item.campania_nombre || '-'}</td>
                   <td>
-                    <span className={`status ${String(item.estado).toLowerCase()}`}>
+                    <span
+                      className={`status ${String(item.estado).toLowerCase()}`}
+                      title={item.error_mensaje || undefined}
+                    >
                       {estadoLabels[item.estado] || item.estado}
                     </span>
                   </td>
@@ -132,8 +260,12 @@ export default function MessageHistoryPage() {
                   <td colSpan={4}>
                     <div className="empty-state">
                       <span className="empty-state-icon">📭</span>
-                      <div className="empty-state-title">Sin mensajes todavía</div>
-                      Los mensajes enviados desde Campañas aparecerán aquí.
+                      <div className="empty-state-title">
+                        {loading ? 'Cargando mensajes…' : hayFiltros ? 'Sin resultados' : 'Sin mensajes todavía'}
+                      </div>
+                      {!loading && (hayFiltros
+                        ? 'Prueba con otros filtros o limpia los filtros actuales.'
+                        : 'Los mensajes enviados desde Campañas aparecerán aquí.')}
                     </div>
                   </td>
                 </tr>
