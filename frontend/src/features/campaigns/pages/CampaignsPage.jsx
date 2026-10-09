@@ -48,6 +48,20 @@ const PAGE_SIZE = 20;
 // Debe coincidir con SEND_DELAY_MS del backend (campaigns.service.js): pausa entre mensajes.
 const SEGUNDOS_POR_MENSAJE = 5;
 
+// Versión en palabras para frases: "10 segundos", "1 minuto", "49 minutos", "2 horas".
+function duracionEnTexto(segundos) {
+  const total = Math.max(1, Math.round(segundos));
+  if (total < 60) return `${total} segundo${total === 1 ? '' : 's'}`;
+
+  const minutosTotales = Math.round(total / 60);
+  if (minutosTotales < 60) return `${minutosTotales} minuto${minutosTotales === 1 ? '' : 's'}`;
+
+  const horas = Math.floor(minutosTotales / 60);
+  const minutos = minutosTotales % 60;
+  const textoHoras = `${horas} hora${horas === 1 ? '' : 's'}`;
+  return minutos === 0 ? textoHoras : `${textoHoras} y ${minutos} minuto${minutos === 1 ? '' : 's'}`;
+}
+
 function formatDuracion(segundos) {
   const total = Math.max(0, Math.round(segundos));
   if (total < 60) return `${total} s`;
@@ -994,7 +1008,7 @@ export default function CampaignsPage() {
       {showConfirmSend && campaign && (
         <Modal
           title="Confirmar envío"
-          subtitle="Revisa el resumen antes de enviar. Una vez iniciado, no se puede cancelar."
+          subtitle="Revisa el resumen antes de enviar."
           icon={<IconSend />}
           onClose={() => setShowConfirmSend(false)}
           width={460}
@@ -1035,8 +1049,9 @@ export default function CampaignsPage() {
               <strong>{formatDuracion(pendientes * SEGUNDOS_POR_MENSAJE)}</strong>
             </div>
           </div>
-          <p style={{ margin: '12px 0 0', color: '#667085', fontSize: 13 }}>
-            Se envía un mensaje cada {SEGUNDOS_POR_MENSAJE} segundos. Puedes cerrar esta pantalla mientras tanto.
+          <p style={{ margin: '12px 0 0', color: '#667085', fontSize: 13, lineHeight: 1.55 }}>
+            El envío tardará unos {duracionEnTexto(pendientes * SEGUNDOS_POR_MENSAJE)}. Al terminar, verás el
+            resultado en esta campaña. Una vez iniciado, no se puede detener.
           </p>
         </Modal>
       )}
