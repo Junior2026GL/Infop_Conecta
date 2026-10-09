@@ -1,0 +1,171 @@
+CREATE DATABASE IF NOT EXISTS infop_conecta
+  CHARACTER SET utf8mb4
+  COLLATE utf8mb4_unicode_ci;
+
+USE infop_conecta;
+
+CREATE TABLE roles (
+  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  nombre VARCHAR(50) NOT NULL UNIQUE,
+  descripcion VARCHAR(255) NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE usuarios (
+  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  rol_id BIGINT UNSIGNED NULL,
+  nombre VARCHAR(150) NOT NULL,
+  usuario VARCHAR(60) NOT NULL UNIQUE,
+  email VARCHAR(180) NULL,
+  password_hash VARCHAR(255) NOT NULL,
+  activo TINYINT(1) NOT NULL DEFAULT 1,
+  ultimo_acceso_at DATETIME NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  CONSTRAINT fk_usuario_rol FOREIGN KEY (rol_id) REFERENCES roles(id)
+);
+
+CREATE TABLE cursos (
+  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  codigo VARCHAR(80) NULL,
+  nombre VARCHAR(200) NOT NULL,
+  promocion VARCHAR(100) NULL,
+  fecha_inicio DATE NULL,
+  fecha_fin DATE NULL,
+  activo TINYINT(1) NOT NULL DEFAULT 1,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+CREATE TABLE participantes (
+  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  nombre_completo VARCHAR(200) NOT NULL,
+  telefono VARCHAR(30) NOT NULL,
+  email VARCHAR(180) NULL,
+  numero_identidad VARCHAR(50) NULL,
+  opt_in_whatsapp TINYINT(1) NOT NULL DEFAULT 0,
+  activo TINYINT(1) NOT NULL DEFAULT 1,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  INDEX idx_participante_telefono (telefono),
+  INDEX idx_participante_email (email)
+);
+
+CREATE TABLE curso_participantes (
+  curso_id BIGINT UNSIGNED NOT NULL,
+  participante_id BIGINT UNSIGNED NOT NULL,
+  estado VARCHAR(50) NOT NULL DEFAULT 'ACTIVO',
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (curso_id, participante_id),
+  CONSTRAINT fk_cp_curso FOREIGN KEY (curso_id) REFERENCES cursos(id) ON DELETE CASCADE,
+  CONSTRAINT fk_cp_participante FOREIGN KEY (participante_id) REFERENCES participantes(id) ON DELETE CASCADE
+);
+
+CREATE TABLE plantillas_mensaje (
+  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  nombre VARCHAR(150) NOT NULL,
+  meta_template_name VARCHAR(150) NOT NULL,
+  categoria VARCHAR(50) NULL,
+  idioma VARCHAR(20) NOT NULL DEFAULT 'es',
+  contenido TEXT NULL,
+  variables JSON NULL,
+  activo TINYINT(1) NOT NULL DEFAULT 1,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+CREATE TABLE mensajes (
+  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  participante_id BIGINT UNSIGNED NULL,
+  telefono VARCHAR(30) NOT NULL,
+  tipo ENUM('TEXT','TEMPLATE') NOT NULL,
+  contenido TEXT NULL,
+  template_name VARCHAR(150) NULL,
+  meta_message_id VARCHAR(255) NULL,
+  estado ENUM('PENDIENTE','SENT','DELIVERED','READ','FAILED') NOT NULL DEFAULT 'PENDIENTE',
+  error_codigo VARCHAR(100) NULL,
+  error_mensaje TEXT NULL,
+  enviado_por BIGINT UNSIGNED NULL,
+  delivered_at DATETIME NULL,
+  read_at DATETIME NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY uq_meta_message_id (meta_message_id),
+  INDEX idx_mensaje_estado (estado),
+  INDEX idx_mensaje_telefono (telefono),
+  CONSTRAINT fk_mensaje_participante FOREIGN KEY (participante_id) REFERENCES participantes(id) ON DELETE SET NULL,
+  CONSTRAINT fk_mensaje_usuario FOREIGN KEY (enviado_por) REFERENCES usuarios(id) ON DELETE SET NULL
+);
+
+CREATE TABLE auditoria (
+  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  usuario_id BIGINT UNSIGNED NULL,
+  accion VARCHAR(100) NOT NULL,
+  modulo VARCHAR(100) NOT NULL,
+  descripcion TEXT NULL,
+  ip VARCHAR(64) NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT fk_auditoria_usuario FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE SET NULL
+);
+
+CREATE TABLE campanias (
+  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  plantilla_id BIGINT UNSIGNED NOT NULL,
+  nombre VARCHAR(200) NOT NULL,
+  curso VARCHAR(200) NOT NULL,
+  valores_fijos JSON NULL,
+  estado ENUM('BORRADOR','ENVIANDO','FINALIZADA') NOT NULL DEFAULT 'BORRADOR',
+  total_registros INT UNSIGNED NOT NULL DEFAULT 0,
+  enviados INT UNSIGNED NOT NULL DEFAULT 0,
+  fallidos INT UNSIGNED NOT NULL DEFAULT 0,
+  costo_unitario DECIMAL(10,4) NOT NULL DEFAULT 0,
+  creado_por BIGINT UNSIGNED NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  CONSTRAINT fk_campania_plantilla FOREIGN KEY (plantilla_id) REFERENCES plantillas_mensaje(id),
+  CONSTRAINT fk_campania_usuario FOREIGN KEY (creado_por) REFERENCES usuarios(id) ON DELETE SET NULL
+);
+
+CREATE TABLE campania_destinatarios (
+  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  campania_id BIGINT UNSIGNED NOT NULL,
+  nombre VARCHAR(200) NOT NULL,
+  telefono VARCHAR(30) NOT NULL,
+  nota VARCHAR(50) NULL,
+  estado ENUM('PENDIENTE','ENVIADO','FALLIDO') NOT NULL DEFAULT 'PENDIENTE',
+  mensaje_id BIGINT UNSIGNED NULL,
+  error_mensaje TEXT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  INDEX idx_destinatario_campania (campania_id),
+  CONSTRAINT fk_destinatario_campania FOREIGN KEY (campania_id) REFERENCES campanias(id) ON DELETE CASCADE,
+  CONSTRAINT fk_destinatario_mensaje FOREIGN KEY (mensaje_id) REFERENCES mensajes(id) ON DELETE SET NULL
+);
+
+CREATE TABLE configuracion (
+  clave VARCHAR(80) PRIMARY KEY,
+  valor VARCHAR(255) NOT NULL,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+CREATE TABLE saldos (
+  usuario_id BIGINT UNSIGNED PRIMARY KEY,
+  saldo_actual DECIMAL(10,2) NOT NULL DEFAULT 0,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  CONSTRAINT fk_saldo_usuario FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE CASCADE
+);
+
+CREATE TABLE movimientos_saldo (
+  id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  usuario_id BIGINT UNSIGNED NOT NULL,
+  tipo ENUM('RECARGA','CONSUMO') NOT NULL,
+  monto DECIMAL(10,2) NOT NULL,
+  saldo_resultante DECIMAL(10,2) NOT NULL,
+  referencia VARCHAR(255) NULL,
+  campania_id BIGINT UNSIGNED NULL,
+  creado_por BIGINT UNSIGNED NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  INDEX idx_movimiento_usuario (usuario_id),
+  CONSTRAINT fk_movimiento_usuario FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE CASCADE,
+  CONSTRAINT fk_movimiento_campania FOREIGN KEY (campania_id) REFERENCES campanias(id) ON DELETE SET NULL,
+  CONSTRAINT fk_movimiento_creador FOREIGN KEY (creado_por) REFERENCES usuarios(id) ON DELETE SET NULL
+);
