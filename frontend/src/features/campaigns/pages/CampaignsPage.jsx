@@ -556,7 +556,7 @@ export default function CampaignsPage() {
           subtitle="Elige una plantilla, completa los datos e importa a tus participantes."
           icon={<IconUpload />}
           onClose={() => setShowImportModal(false)}
-          width={1000}
+          width={1180}
           footer={
             <>
               <button type="button" className="btn-outline" onClick={() => setShowImportModal(false)}>
@@ -600,7 +600,7 @@ export default function CampaignsPage() {
                       <p className="fixed-fields-title">Datos iguales para todos los participantes</p>
                       <div className="form-grid">
                         {camposFijos.map((campo) => (
-                          <div key={campo.key}>
+                          <div key={campo.key} style={campo.key === 'enlace_grupo' ? { gridColumn: '1 / -1' } : undefined}>
                             <label>{ETIQUETAS_CAMPOS_FIJOS[campo.key] || campo.etiqueta || campo.key}</label>
                             <input
                               value={valoresFijos[campo.key] || ''}
