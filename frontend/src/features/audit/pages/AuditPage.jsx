@@ -3,7 +3,6 @@ import PageHeader from '../../../components/PageHeader.jsx';
 import Pagination from '../../../components/Pagination.jsx';
 import {
   IconSearch,
-  IconHistory,
   IconUser,
   IconUsers,
   IconAlert,
@@ -17,10 +16,10 @@ import {
   IconShield,
   IconTemplate,
   IconCost,
-  IconCalendar,
   IconClock,
+  IconLogbook,
 } from '../../../components/icons.jsx';
-import { listAudit } from '../services/audit.service.js';
+import { listAudit, getAuditStats } from '../services/audit.service.js';
 
 const PAGE_SIZE = 20;
 
@@ -40,6 +39,15 @@ const moduloTones = {
   CAMPANAS: 'green',
   SALDOS: 'amber',
   CONFIGURACION: 'gray',
+};
+
+const moduloIcons = {
+  AUTENTICACION: IconShield,
+  USUARIOS: IconUsers,
+  PLANTILLAS: IconTemplate,
+  CAMPANAS: IconSend,
+  SALDOS: IconWallet,
+  CONFIGURACION: IconCost,
 };
 
 const accionLabels = {
@@ -68,15 +76,6 @@ const accionTones = {
   RECARGA: 'green',
 };
 
-const moduloIcons = {
-  AUTENTICACION: IconShield,
-  USUARIOS: IconUsers,
-  PLANTILLAS: IconTemplate,
-  CAMPANAS: IconSend,
-  SALDOS: IconWallet,
-  CONFIGURACION: IconCost,
-};
-
 const accionIcons = {
   LOGIN: IconUser,
   LOGIN_FALLIDO: IconAlert,
@@ -90,7 +89,7 @@ const accionIcons = {
   RECARGA: IconWallet,
 };
 
-// Acciones que merecen atención: se resaltan en la lista.
+// Debe coincidir con ACCIONES_ALERTA del backend (audit.repository.js).
 const ACCIONES_ALERTA = new Set(['LOGIN_FALLIDO', 'DESACTIVAR']);
 
 function initials(name) {
@@ -130,13 +129,12 @@ function diaEtiqueta(clave) {
   if (clave === toDateInput(ayer)) return 'Ayer';
 
   const [y, m, d] = clave.split('-').map(Number);
-  const texto = new Date(y, m - 1, d).toLocaleDateString('es-HN', {
+  return new Date(y, m - 1, d).toLocaleDateString('es-HN', {
     weekday: 'long',
     day: 'numeric',
     month: 'long',
     year: 'numeric',
   });
-  return texto.charAt(0).toUpperCase() + texto.slice(1);
 }
 
 function rangoRapido(dias) {
@@ -146,15 +144,14 @@ function rangoRapido(dias) {
   return { desde: toDateInput(desde), hasta: toDateInput(hasta) };
 }
 
-const RANGOS = [
-  { label: 'Hoy', dias: 1 },
-  { label: '7 días', dias: 7 },
-  { label: '30 días', dias: 30 },
-];
+function formatNumero(valor) {
+  return Number(valor || 0).toLocaleString('es-HN');
+}
 
 export default function AuditPage() {
   const [items, setItems] = useState([]);
   const [total, setTotal] = useState(0);
+  const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [recarga, setRecarga] = useState(0);
@@ -162,11 +159,25 @@ export default function AuditPage() {
   const [search, setSearch] = useState('');
   const [modulo, setModulo] = useState('TODOS');
   const [accion, setAccion] = useState('TODOS');
+  const [soloAlertas, setSoloAlertas] = useState(false);
   const [desde, setDesde] = useState('');
   const [hasta, setHasta] = useState('');
+  const [verFechas, setVerFechas] = useState(false);
   const [page, setPage] = useState(1);
 
-  const hayFiltros = search || modulo !== 'TODOS' || accion !== 'TODOS' || desde || hasta;
+  const hoyRango = rangoRapido(1);
+  const semanaRango = rangoRapido(7);
+  const esTodo = !desde && !hasta;
+  const esHoy = desde === hoyRango.desde && hasta === hoyRango.hasta;
+  const esSemana = desde === semanaRango.desde && hasta === semanaRango.hasta;
+
+  const hayFiltros = search || modulo !== 'TODOS' || accion !== 'TODOS' || soloAlertas || desde || hasta;
+
+  useEffect(() => {
+    getAuditStats({ hoy: hoyRango.desde, desdeSemana: semanaRango.desde })
+      .then(setStats)
+      .catch(console.error);
+  }, [recarga]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -176,6 +187,7 @@ export default function AuditPage() {
         q: search || undefined,
         modulo: modulo !== 'TODOS' ? modulo : undefined,
         accion: accion !== 'TODOS' ? accion : undefined,
+        soloAlertas: soloAlertas ? '1' : undefined,
         desde: desde || undefined,
         hasta: hasta || undefined,
         page,
@@ -192,30 +204,24 @@ export default function AuditPage() {
     }, 300);
 
     return () => clearTimeout(timer);
-  }, [search, modulo, accion, desde, hasta, page, recarga]);
+  }, [search, modulo, accion, soloAlertas, desde, hasta, page, recarga]);
 
   useEffect(() => {
     setPage(1);
-  }, [search, modulo, accion, desde, hasta]);
+  }, [search, modulo, accion, soloAlertas, desde, hasta]);
 
   function limpiarFiltros() {
     setSearch('');
     setModulo('TODOS');
     setAccion('TODOS');
+    setSoloAlertas(false);
     setDesde('');
     setHasta('');
   }
 
-  function aplicarRango(dias) {
-    const rango = rangoRapido(dias);
-    // Pulsar el rango activo lo quita.
-    if (desde === rango.desde && hasta === rango.hasta) {
-      setDesde('');
-      setHasta('');
-      return;
-    }
-    setDesde(rango.desde);
-    setHasta(rango.hasta);
+  function aplicarRango(rango) {
+    setDesde(rango?.desde || '');
+    setHasta(rango?.hasta || '');
   }
 
   const grupos = useMemo(() => {
@@ -232,104 +238,137 @@ export default function AuditPage() {
     }));
   }, [items]);
 
+  const resumen = [
+    { label: 'Eventos totales', value: stats?.total, Icon: IconLogbook, tone: 'blue', onClick: limpiarFiltros },
+    { label: 'Hoy', value: stats?.hoy, Icon: IconClock, tone: 'green', onClick: () => aplicarRango(hoyRango) },
+    {
+      label: 'Alertas (7 días)',
+      value: stats?.alertas,
+      Icon: IconAlert,
+      tone: 'red',
+      onClick: () => { setSoloAlertas(true); aplicarRango(semanaRango); },
+    },
+    {
+      label: 'Envíos de campaña',
+      value: stats?.envios,
+      Icon: IconSend,
+      tone: 'purple',
+      onClick: () => { setAccion('ENVIO'); },
+    },
+  ];
+
   return (
     <>
       <PageHeader
         title="Bitácora"
         description="Registro de auditoría de acciones sensibles del sistema."
+        actions={
+          <button
+            type="button"
+            className="btn-outline"
+            onClick={() => setRecarga((n) => n + 1)}
+            disabled={loading}
+          >
+            {loading ? 'Actualizando…' : 'Actualizar'}
+          </button>
+        }
       />
 
       {error && <div className="alert error" style={{ marginBottom: 16 }}>{error}</div>}
 
       <div className="audit-content">
-        <div className="panel audit-panel">
-          <div className="audit-head">
-            <div>
-              <h3 className="panel-title" style={{ margin: 0 }}>Eventos registrados</h3>
-              <span className="badge-muted" style={{ marginTop: 8 }}>
-                <IconHistory /> {total.toLocaleString('es-HN')} evento{total === 1 ? '' : 's'}
-                {hayFiltros && ' con los filtros actuales'}
+        <div className="audit-kpis">
+          {resumen.map(({ label, value, Icon, tone, onClick }) => (
+            <button type="button" className="audit-kpi" key={label} onClick={onClick} title="Filtrar por esto">
+              <span className={`audit-kpi-icon ${tone}`}><Icon width={20} height={20} /></span>
+              <span>
+                <small>{label}</small>
+                <strong>{stats ? formatNumero(value) : '—'}</strong>
               </span>
-            </div>
+            </button>
+          ))}
+        </div>
+
+        <div className="audit-bar">
+          <div className="input-icon audit-filter-search">
+            <IconSearch />
+            <input
+              placeholder="Buscar por usuario, descripción o IP…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+          </div>
+
+          <div className="audit-pills">
+            <button type="button" className={`audit-pill ${esTodo ? 'active' : ''}`} onClick={() => aplicarRango(null)}>
+              Todo
+            </button>
+            <button type="button" className={`audit-pill ${esHoy ? 'active' : ''}`} onClick={() => aplicarRango(hoyRango)}>
+              Hoy
+            </button>
+            <button type="button" className={`audit-pill ${esSemana ? 'active' : ''}`} onClick={() => aplicarRango(semanaRango)}>
+              7 días
+            </button>
             <button
               type="button"
-              className="btn-outline"
-              onClick={() => setRecarga((n) => n + 1)}
-              disabled={loading}
+              className={`audit-pill ${verFechas || (!esTodo && !esHoy && !esSemana) ? 'active' : ''}`}
+              onClick={() => setVerFechas((v) => !v)}
             >
-              {loading ? 'Actualizando…' : 'Actualizar'}
+              Fechas…
+            </button>
+            <button
+              type="button"
+              className={`audit-pill danger ${soloAlertas ? 'active' : ''}`}
+              onClick={() => setSoloAlertas((v) => !v)}
+            >
+              <IconAlert width={14} height={14} /> Solo alertas
             </button>
           </div>
 
-          <div className="audit-filters">
-            <div className="input-icon audit-filter-search">
-              <IconSearch />
-              <input
-                placeholder="Buscar por usuario, descripción o IP…"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-              />
+          <select value={modulo} onChange={(e) => setModulo(e.target.value)} aria-label="Módulo">
+            <option value="TODOS">Todos los módulos</option>
+            {Object.entries(moduloLabels).map(([value, label]) => (
+              <option key={value} value={value}>{label}</option>
+            ))}
+          </select>
+
+          <select value={accion} onChange={(e) => setAccion(e.target.value)} aria-label="Acción">
+            <option value="TODOS">Todas las acciones</option>
+            {Object.entries(accionLabels).map(([value, label]) => (
+              <option key={value} value={value}>{label}</option>
+            ))}
+          </select>
+
+          {(verFechas || (!esTodo && !esHoy && !esSemana)) && (
+            <div className="audit-dates">
+              <label>
+                <span>Desde</span>
+                <input type="date" value={desde} max={hasta || undefined} onChange={(e) => setDesde(e.target.value)} />
+              </label>
+              <label>
+                <span>Hasta</span>
+                <input type="date" value={hasta} min={desde || undefined} onChange={(e) => setHasta(e.target.value)} />
+              </label>
             </div>
+          )}
+        </div>
 
-            <label className="audit-filter">
-              <span>Módulo</span>
-              <select value={modulo} onChange={(e) => setModulo(e.target.value)}>
-                <option value="TODOS">Todos</option>
-                {Object.entries(moduloLabels).map(([value, label]) => (
-                  <option key={value} value={value}>{label}</option>
-                ))}
-              </select>
-            </label>
+        <div className="audit-result-line">
+          <span>
+            {formatNumero(total)} evento{total === 1 ? '' : 's'}
+            {hayFiltros && ' con los filtros actuales'}
+          </span>
+          {hayFiltros && (
+            <button type="button" className="btn-link" onClick={limpiarFiltros}>Limpiar filtros</button>
+          )}
+        </div>
 
-            <label className="audit-filter">
-              <span>Acción</span>
-              <select value={accion} onChange={(e) => setAccion(e.target.value)}>
-                <option value="TODOS">Todas</option>
-                {Object.entries(accionLabels).map(([value, label]) => (
-                  <option key={value} value={value}>{label}</option>
-                ))}
-              </select>
-            </label>
-
-            <label className="audit-filter">
-              <span>Desde</span>
-              <input type="date" value={desde} max={hasta || undefined} onChange={(e) => setDesde(e.target.value)} />
-            </label>
-
-            <label className="audit-filter">
-              <span>Hasta</span>
-              <input type="date" value={hasta} min={desde || undefined} onChange={(e) => setHasta(e.target.value)} />
-            </label>
+        {loading && items.length === 0 ? (
+          <div className="table-loading">
+            {[0, 1, 2, 3].map((i) => <div className="table-loading-row" key={i} />)}
           </div>
-
-          <div className="audit-quick">
-            <span>Atajos:</span>
-            {RANGOS.map(({ label, dias }) => {
-              const rango = rangoRapido(dias);
-              const activo = desde === rango.desde && hasta === rango.hasta;
-              return (
-                <button
-                  type="button"
-                  key={label}
-                  className={`audit-chip ${activo ? 'active' : ''}`}
-                  onClick={() => aplicarRango(dias)}
-                >
-                  {label}
-                </button>
-              );
-            })}
-            {hayFiltros && (
-              <button type="button" className="btn-link" onClick={limpiarFiltros}>
-                Limpiar filtros
-              </button>
-            )}
-          </div>
-
-          {loading && items.length === 0 ? (
-            <div className="table-loading">
-              {[0, 1, 2, 3].map((i) => <div className="table-loading-row" key={i} />)}
-            </div>
-          ) : items.length === 0 ? (
+        ) : items.length === 0 ? (
+          <div className="panel">
             <div className="empty-state">
               <span className="empty-state-icon">🗒️</span>
               <div className="empty-state-title">
@@ -341,73 +380,64 @@ export default function AuditPage() {
                   : 'Las acciones sensibles del sistema aparecerán aquí a medida que ocurran.'}
               </p>
             </div>
-          ) : (
-            <div className={`table-wrap audit-table-wrap ${loading ? 'is-refreshing' : ''}`}>
-              <table className="audit-table">
-                <thead>
-                  <tr>
-                    <th>Hora</th>
-                    <th>Usuario</th>
-                    <th>Acción</th>
-                    <th>Módulo</th>
-                    <th>Descripción</th>
-                    <th>IP</th>
-                  </tr>
-                </thead>
-                {grupos.map((grupo) => (
-                  <tbody key={grupo.clave}>
-                    <tr className="audit-day">
-                      <td colSpan={6}>
-                        <IconCalendar width={14} height={14} className="audit-day-icon" />
-                        <span className="audit-day-label">{grupo.etiqueta}</span>
-                        <span className="audit-day-count">
-                          {grupo.eventos.length} evento{grupo.eventos.length === 1 ? '' : 's'} en esta página
+          </div>
+        ) : (
+          <div className={`audit-feed ${loading ? 'is-refreshing' : ''}`}>
+            {grupos.map((grupo) => (
+              <section key={grupo.clave}>
+                <div className="audit-day">
+                  <b>{grupo.etiqueta}</b>
+                  <span>
+                    {grupo.eventos.length} evento{grupo.eventos.length === 1 ? '' : 's'} en esta página
+                  </span>
+                </div>
+
+                <div className="audit-timeline">
+                  {grupo.eventos.map((item) => {
+                    const AccionIcon = accionIcons[item.accion] || IconLogbook;
+                    const ModuloIcon = moduloIcons[item.modulo];
+                    const alerta = ACCIONES_ALERTA.has(item.accion);
+
+                    return (
+                      <div className="audit-event" key={item.id}>
+                        <span className={`audit-node ${accionTones[item.accion] || 'gray'}`}>
+                          <AccionIcon width={18} height={18} />
                         </span>
-                      </td>
-                    </tr>
 
-                    {grupo.eventos.map((item) => {
-                      const AccionIcon = accionIcons[item.accion];
-                      const ModuloIcon = moduloIcons[item.modulo];
+                        <article className={`audit-card ${alerta ? 'alert' : ''}`}>
+                          <header>
+                            <strong>{accionLabels[item.accion] || item.accion}</strong>
+                            <span className={`audit-tag ${moduloTones[item.modulo] || 'gray'}`}>
+                              {ModuloIcon && <ModuloIcon width={13} height={13} />}
+                              {moduloLabels[item.modulo] || item.modulo}
+                            </span>
+                            <time>
+                              <IconClock width={13} height={13} /> {formatHora(item.created_at)}
+                            </time>
+                          </header>
 
-                      return (
-                      <tr key={item.id} className={ACCIONES_ALERTA.has(item.accion) ? 'audit-row-alert' : ''}>
-                        <td className="audit-time">
-                          <IconClock width={13} height={13} /> {formatHora(item.created_at)}
-                        </td>
-                        <td>
-                          {item.usuario_id ? (
-                            <div className="audit-user">
-                              <span className="avatar sm">{initials(item.usuario_nombre)}</span>
-                              <span>{item.usuario_nombre || '-'}</span>
-                            </div>
-                          ) : (
-                            <span className="texto-muted-soft">Sistema</span>
-                          )}
-                        </td>
-                        <td>
-                          <span className={`audit-tag ${accionTones[item.accion] || 'gray'}`}>
-                            {AccionIcon && <AccionIcon width={13} height={13} />}
-                            {accionLabels[item.accion] || item.accion}
-                          </span>
-                        </td>
-                        <td>
-                          <span className={`audit-tag ${moduloTones[item.modulo] || 'gray'}`}>
-                            {ModuloIcon && <ModuloIcon width={13} height={13} />}
-                            {moduloLabels[item.modulo] || item.modulo}
-                          </span>
-                        </td>
-                        <td className="audit-desc">{item.descripcion || '-'}</td>
-                        <td className="audit-ip">{item.ip || '-'}</td>
-                      </tr>
-                      );
-                    })}
-                  </tbody>
-                ))}
-              </table>
-            </div>
-          )}
-        </div>
+                          <p>{item.descripcion || 'Sin descripción'}</p>
+
+                          <footer>
+                            {item.usuario_id ? (
+                              <span className="audit-user">
+                                <span className="avatar sm">{initials(item.usuario_nombre)}</span>
+                                {item.usuario_nombre || '-'}
+                              </span>
+                            ) : (
+                              <span className="texto-muted-soft">Sistema</span>
+                            )}
+                            {item.ip && <span className="audit-ip">IP {item.ip}</span>}
+                          </footer>
+                        </article>
+                      </div>
+                    );
+                  })}
+                </div>
+              </section>
+            ))}
+          </div>
+        )}
 
         <Pagination page={page} pageSize={PAGE_SIZE} total={total} onPageChange={setPage} />
       </div>

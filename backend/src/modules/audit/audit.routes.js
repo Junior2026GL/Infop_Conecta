@@ -7,6 +7,7 @@ const router = Router();
 
 router.use(requireRole(ROLES.SUPER_ADMIN));
 
+router.get('/resumen', controller.stats);
 router.get('/', controller.list);
 
 export default router;

@@ -8,7 +8,33 @@ export async function logAudit({ userId, accion, modulo, descripcion, ip }) {
   );
 }
 
-export async function listAudit({ modulo, accion, usuarioId, desde, hasta, q, page, pageSize }) {
+// Acciones que merecen revisión: intentos fallidos de acceso y cuentas desactivadas.
+export const ACCIONES_ALERTA = ['LOGIN_FALLIDO', 'DESACTIVAR'];
+
+/**
+ * Cifras para las tarjetas de resumen. Las fechas llegan desde el navegador
+ * (día local del usuario) para que "hoy" no dependa de la zona horaria del servidor.
+ */
+export async function getAuditStats({ hoy, desdeSemana }) {
+  const [[row]] = await db.query(
+    `SELECT
+       COUNT(*) AS total,
+       COALESCE(SUM(created_at >= ?), 0) AS hoy,
+       COALESCE(SUM(created_at >= ? AND accion IN (${ACCIONES_ALERTA.map(() => '?').join(', ')})), 0) AS alertas,
+       COALESCE(SUM(accion = 'ENVIO'), 0) AS envios
+     FROM auditoria`,
+    [`${hoy} 00:00:00`, `${desdeSemana} 00:00:00`, ...ACCIONES_ALERTA]
+  );
+
+  return {
+    total: Number(row.total),
+    hoy: Number(row.hoy),
+    alertas: Number(row.alertas),
+    envios: Number(row.envios),
+  };
+}
+
+export async function listAudit({ modulo, accion, soloAlertas, usuarioId, desde, hasta, q, page, pageSize }) {
   const where = [];
   const params = [];
 
@@ -19,6 +45,10 @@ export async function listAudit({ modulo, accion, usuarioId, desde, hasta, q, pa
   if (accion) {
     where.push('a.accion = ?');
     params.push(accion);
+  }
+  if (soloAlertas) {
+    where.push(`a.accion IN (${ACCIONES_ALERTA.map(() => '?').join(', ')})`);
+    params.push(...ACCIONES_ALERTA);
   }
   if (usuarioId) {
     where.push('a.usuario_id = ?');

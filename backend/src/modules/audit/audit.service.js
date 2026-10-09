@@ -23,10 +23,19 @@ export async function record(req, { accion, modulo, descripcion, userId }) {
   }
 }
 
+const FECHA_REGEX = /^\d{4}-\d{2}-\d{2}$/;
+
+export function stats(query) {
+  const hoy = FECHA_REGEX.test(query.hoy || '') ? query.hoy : new Date().toISOString().slice(0, 10);
+  const desdeSemana = FECHA_REGEX.test(query.desdeSemana || '') ? query.desdeSemana : hoy;
+  return repository.getAuditStats({ hoy, desdeSemana });
+}
+
 export function list(query) {
   return repository.listAudit({
     modulo: query.modulo || null,
     accion: query.accion || null,
+    soloAlertas: query.soloAlertas === '1' || query.soloAlertas === 'true',
     usuarioId: query.usuarioId || null,
     desde: query.desde || null,
     hasta: query.hasta || null,
