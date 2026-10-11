@@ -1269,10 +1269,13 @@ th, td { text-align: left; padding: 13px 12px; border-bottom: 1px solid #edf0f5;
 .campaigns-history-table { table-layout: fixed; width: 100%; min-width: 0; }
 .campaigns-history-table th:nth-child(2), .campaigns-history-table td:nth-child(2) { width: 150px; }
 .campaigns-history-table th:nth-child(3), .campaigns-history-table td:nth-child(3) { width: 110px; }
-.campaigns-history-table th:nth-child(4), .campaigns-history-table td:nth-child(4) { width: 70px; }
-.campaigns-history-table th:nth-child(5), .campaigns-history-table td:nth-child(5) { width: 90px; }
-.campaigns-history-table th:nth-child(6), .campaigns-history-table td:nth-child(6) { width: 80px; }
-.campaigns-history-table th:nth-child(7), .campaigns-history-table td:nth-child(7) { width: 90px; }
+.campaigns-history-table th:nth-child(4), .campaigns-history-table td:nth-child(4),
+.campaigns-history-table th:nth-child(5), .campaigns-history-table td:nth-child(5) { width: 128px; }
+.campaigns-history-table td:nth-child(4), .campaigns-history-table td:nth-child(5) { font-size: 12px; color: var(--color-muted); }
+.campaigns-history-table th:nth-child(6), .campaigns-history-table td:nth-child(6) { width: 60px; }
+.campaigns-history-table th:nth-child(7), .campaigns-history-table td:nth-child(7) { width: 80px; }
+.campaigns-history-table th:nth-child(8), .campaigns-history-table td:nth-child(8) { width: 70px; }
+.campaigns-history-table th:nth-child(9), .campaigns-history-table td:nth-child(9) { width: 80px; }
 
 th {
   color: var(--color-muted-soft);
