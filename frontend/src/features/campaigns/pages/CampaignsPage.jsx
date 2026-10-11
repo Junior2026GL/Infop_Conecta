@@ -49,6 +49,14 @@ const PAGE_SIZE = 20;
 const SEGUNDOS_POR_MENSAJE = 5;
 
 // Versión en palabras para frases: "10 segundos", "1 minuto", "49 minutos", "2 horas".
+function formatFecha(valor) {
+  if (!valor) return '-';
+  return new Date(String(valor).replace(' ', 'T')).toLocaleString('es-HN', {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  });
+}
+
 function duracionEnTexto(segundos) {
   const total = Math.max(1, Math.round(segundos));
   if (total < 60) return `${total} segundo${total === 1 ? '' : 's'}`;
@@ -948,6 +956,8 @@ export default function CampaignsPage() {
                   <th>Nombre</th>
                   <th>Curso</th>
                   <th>Estado</th>
+                  <th>Creada</th>
+                  <th>Enviada</th>
                   <th>Total</th>
                   <th>Enviados</th>
                   <th>Fallidos</th>
@@ -971,6 +981,8 @@ export default function CampaignsPage() {
                         )}
                       </div>
                     </td>
+                    <td>{formatFecha(c.created_at)}</td>
+                    <td>{formatFecha(c.fecha_envio)}</td>
                     <td>{c.total_registros}</td>
                     <td>{c.enviados}</td>
                     <td>{c.fallidos}</td>
@@ -983,7 +995,7 @@ export default function CampaignsPage() {
                 ))}
                 {filteredHistory.length === 0 && (
                   <tr>
-                    <td colSpan={7}>
+                    <td colSpan={9}>
                       <div className="empty-state">
                         <span className="empty-state-icon">📨</span>
                         <div className="empty-state-title">Sin campañas todavía</div>

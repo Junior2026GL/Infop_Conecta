@@ -47,7 +47,7 @@ export async function listCampaigns({ creadoPor } = {}) {
   const [rows] = await db.query(
     `SELECT c.id, c.nombre, c.curso, c.estado, c.total_registros, c.enviados, c.fallidos,
             c.costo_unitario, (c.enviados * c.costo_unitario) AS costo_total,
-            p.nombre AS plantilla_nombre, c.created_at,
+            p.nombre AS plantilla_nombre, c.created_at, c.fecha_envio,
             COALESCE(cd.pendientes, 0) AS pendientes,
             (
               c.estado = 'BORRADOR'
@@ -109,7 +109,9 @@ export async function listDestinatariosPendientes(campaniaId) {
 }
 
 export async function updateCampaignEstado(id, estado) {
-  await db.query('UPDATE campanias SET estado = ? WHERE id = ?', [estado, id]);
+  // Al finalizar se guarda cuándo terminó el envío; un reenvío lo actualiza.
+  const fechaEnvio = estado === 'FINALIZADA' ? ', fecha_envio = NOW()' : '';
+  await db.query(`UPDATE campanias SET estado = ?${fechaEnvio} WHERE id = ?`, [estado, id]);
 }
 
 /**
