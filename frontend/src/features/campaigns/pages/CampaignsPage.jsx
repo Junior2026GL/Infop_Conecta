@@ -543,6 +543,7 @@ export default function CampaignsPage() {
   // Con 20 mensajes o menos el saldo se considera justo.
   const estadoSaldo = alcanzaPara === null ? 'ok' : alcanzaPara <= 0 ? 'none' : alcanzaPara <= 20 ? 'low' : 'ok';
   const requiereNota = (plantilla?.variables || []).some((v) => v.key === 'nota');
+  const campaignUsaNota = (campaign?.variables || []).some((v) => v.key === 'nota');
 
   const filteredHistory = useMemo(() => history.filter((c) => {
     const term = historySearch.trim().toLowerCase();
@@ -874,7 +875,7 @@ export default function CampaignsPage() {
                     <tr>
                       <th>Nombre</th>
                       <th>Teléfono</th>
-                      <th>Nota</th>
+                      {campaignUsaNota && <th>Nota</th>}
                       <th>Estado</th>
                       <th>Detalle</th>
                       {campaign.estado === 'BORRADOR' && <th></th>}
@@ -885,7 +886,7 @@ export default function CampaignsPage() {
                       <tr key={d.id}>
                         <td title={d.nombre || ''}>{d.nombre || '-'}</td>
                         <td title={d.telefono || ''}>{d.telefono || '-'}</td>
-                        <td>{d.nota || '-'}</td>
+                        {campaignUsaNota && <td>{d.nota || '-'}</td>}
                         <td>
                           <span
                             className={`status ${
@@ -1129,14 +1130,16 @@ export default function CampaignsPage() {
                   required
                 />
               </div>
-              <div style={{ gridColumn: '1 / -1' }}>
-                <label>Nota <span className="label-optional">(opcional)</span></label>
-                <input
-                  value={editDestForm.nota}
-                  onChange={(e) => setEditDestForm({ ...editDestForm, nota: e.target.value })}
-                  placeholder="Ej. 70"
-                />
-              </div>
+              {campaignUsaNota && (
+                <div style={{ gridColumn: '1 / -1' }}>
+                  <label>Nota <span className="label-optional">(opcional)</span></label>
+                  <input
+                    value={editDestForm.nota}
+                    onChange={(e) => setEditDestForm({ ...editDestForm, nota: e.target.value })}
+                    placeholder="Ej. 70"
+                  />
+                </div>
+              )}
             </div>
           </form>
         </Modal>
@@ -1180,14 +1183,16 @@ export default function CampaignsPage() {
                   required
                 />
               </div>
-              <div style={{ gridColumn: '1 / -1' }}>
-                <label>Nota <span className="label-optional">(opcional)</span></label>
-                <input
-                  value={addDestForm.nota}
-                  onChange={(e) => setAddDestForm({ ...addDestForm, nota: e.target.value })}
-                  placeholder="Ej. 70"
-                />
-              </div>
+              {campaignUsaNota && (
+                <div style={{ gridColumn: '1 / -1' }}>
+                  <label>Nota <span className="label-optional">(opcional)</span></label>
+                  <input
+                    value={addDestForm.nota}
+                    onChange={(e) => setAddDestForm({ ...addDestForm, nota: e.target.value })}
+                    placeholder="Ej. 70"
+                  />
+                </div>
+              )}
             </div>
           </form>
         </Modal>
