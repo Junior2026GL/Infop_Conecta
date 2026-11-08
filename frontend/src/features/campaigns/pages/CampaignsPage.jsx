@@ -180,8 +180,16 @@ function FileDropzone({ file, onChange }) {
       ) : (
         <>
           <span className="file-drop-icon big"><IconCloudUpload width={30} height={30} strokeWidth={1.9} /></span>
-          <b>{dragging ? 'Suelta el archivo aquí' : 'Arrastra tu archivo aquí o haz clic para elegirlo'}</b>
-          <small>Formatos aceptados: .xlsx, .xls o .csv</small>
+          <b>{dragging ? 'Suelta el archivo aquí' : 'Arrastra tu archivo aquí'}</b>
+          <small>o</small>
+          <button type="button" className="file-drop-btn">
+            <IconUpload width={15} height={15} /> Elegir archivo
+          </button>
+          <div className="file-drop-formats">
+            <span>.xlsx</span>
+            <span>.xls</span>
+            <span>.csv</span>
+          </div>
         </>
       )}
     </div>
