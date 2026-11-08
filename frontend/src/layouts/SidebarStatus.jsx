@@ -40,13 +40,19 @@ export default function SidebarStatus() {
   const count = useCountUp(hoy);
 
   return (
-    <div className="side-status">
-      <div className="side-status-top">
-        <span className="side-pulse" />
-        Sistema en línea
+    <div className="side-status-wrap">
+      <div className="side-bar" aria-hidden="true">
+        <div className="side-bar-fill" />
       </div>
-      <div className="side-status-count">{count.toLocaleString('es')}</div>
-      <div className="side-status-label">mensajes enviados hoy</div>
+
+      <div className="side-status">
+        <div className="side-status-top">
+          <span className="side-pulse" />
+          Sistema en línea
+        </div>
+        <div className="side-status-count">{count.toLocaleString('es')}</div>
+        <div className="side-status-label">mensajes enviados hoy</div>
+      </div>
     </div>
   );
 }

@@ -266,8 +266,31 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 .brand-subtitle { opacity: .72; margin-top: 4px; font-size: 13px; }
 
 /* Estado del sistema (parte baja del menú lateral) */
+.side-status-wrap { display: flex; flex-direction: column; gap: 18px; }
+
+/* Barra que se va llenando de izquierda a derecha, en bucle */
+.side-bar {
+  height: 4px;
+  border-radius: 999px;
+  background: rgba(255,255,255,.12);
+  overflow: hidden;
+}
+.side-bar-fill {
+  height: 100%;
+  width: 0;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #1d6fe0, #4ade80);
+  box-shadow: 0 0 10px rgba(74,222,128,.6);
+  animation: side-bar-fill 3.6s cubic-bezier(.4, 0, .2, 1) infinite;
+}
+@keyframes side-bar-fill {
+  0%   { width: 0; opacity: 1; }
+  75%  { width: 100%; opacity: 1; }
+  90%  { width: 100%; opacity: 0; }
+  100% { width: 0; opacity: 0; }
+}
+
 .side-status {
-  margin-top: auto;
   padding: 16px;
   border-radius: 14px;
   background: rgba(255,255,255,.07);
@@ -318,6 +341,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 }
 @media (prefers-reduced-motion: reduce) {
   .side-pulse::before, .side-pulse::after { animation: none; }
+  .side-bar-fill { animation: none; width: 100%; }
 }
 
 .sidebar nav {
@@ -2929,7 +2953,7 @@ tbody tr:last-child td { border-bottom: 0; }
 @media (max-width: 900px) {
   .app-shell { grid-template-columns: 1fr; }
   .sidebar { position: static; height: auto; }
-  .side-status { display: none; }
+  .side-status-wrap { display: none; }
   .card-grid, .form-grid { grid-template-columns: 1fr; }
   .content { padding: 20px; }
 
