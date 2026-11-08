@@ -123,6 +123,15 @@ export function IconPower(props) {
   );
 }
 
+export function IconCloudUpload(props) {
+  return (
+    <svg {...base} {...props}>
+      <path d="M7 18a4.5 4.5 0 0 1-.6-8.96A6 6 0 0 1 18 9.5a4 4 0 0 1-.5 8" />
+      <path d="M12 21v-8M8.8 15.8 12 12.6l3.2 3.2" />
+    </svg>
+  );
+}
+
 export function IconUpload(props) {
   return (
     <svg {...base} {...props}>
