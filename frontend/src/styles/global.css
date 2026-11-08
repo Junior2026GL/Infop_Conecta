@@ -2120,17 +2120,17 @@ tbody tr:last-child td { border-bottom: 0; }
   z-index: 1;
   display: inline-flex;
   align-items: center;
-  gap: 7px;
-  padding: 6px 12px;
+  gap: 9px;
+  padding: 9px 18px;
   border-radius: 999px;
   background: rgba(255, 255, 255, .08);
   border: 1px solid rgba(255, 255, 255, .14);
-  font-size: 12.5px;
+  font-size: 15.5px;
   font-weight: 500;
   color: rgba(255, 255, 255, .78);
   letter-spacing: .01em;
 }
-.login-aside-credit svg { color: var(--color-accent); flex-shrink: 0; }
+.login-aside-credit svg { color: var(--color-accent); flex-shrink: 0; width: 18px; height: 18px; }
 .login-aside-credit b { color: white; font-weight: 700; font-style: italic; }
 
 .login-aside-badge {
@@ -2212,7 +2212,9 @@ tbody tr:last-child td { border-bottom: 0; }
   animation: modal-pop .25s ease;
 }
 
-.login-card::before {
+/* Barra superior: pista tenue + relleno que avanza de izquierda a derecha, en bucle */
+.login-card::before,
+.login-card::after {
   content: '';
   position: absolute;
   top: 0;
@@ -2220,6 +2222,23 @@ tbody tr:last-child td { border-bottom: 0; }
   right: 0;
   height: 4px;
   background: linear-gradient(90deg, var(--color-primary), var(--color-accent));
+}
+.login-card::after { opacity: .18; }
+.login-card::before {
+  z-index: 1;
+  transform-origin: left center;
+  box-shadow: 0 0 10px rgba(74, 222, 128, .6);
+  animation: login-bar-fill 3.6s cubic-bezier(.4, 0, .2, 1) infinite;
+}
+@keyframes login-bar-fill {
+  0%   { transform: scaleX(0); opacity: 1; }
+  75%  { transform: scaleX(1); opacity: 1; }
+  90%  { transform: scaleX(1); opacity: 0; }
+  100% { transform: scaleX(0); opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .login-card::before { animation: none; box-shadow: none; }
+  .login-card::after { opacity: 0; }
 }
 
 .login-card p { color: var(--color-muted); margin: 0 0 10px; }
