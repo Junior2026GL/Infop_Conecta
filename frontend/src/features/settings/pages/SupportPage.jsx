@@ -5,6 +5,7 @@ import {
   IconSave,
   IconPhone,
   IconMail,
+  IconUser,
   IconMessageCircle,
   IconClock,
   IconShield,
@@ -12,7 +13,8 @@ import {
 } from '../../../components/icons.jsx';
 import { getSoporte, updateSoporte } from '../services/settings.service.js';
 
-const emptyForm = { telefono: '', whatsapp: '', correo: '', horario: '' };
+const CAMPOS = ['nombre', 'telefono', 'whatsapp', 'correo', 'horario'];
+const emptyForm = { nombre: '', telefono: '', whatsapp: '', correo: '', horario: '' };
 
 // Honduras: un número de 8 dígitos se completa con el código de país (504),
 // igual que hace el backend al enviar mensajes. Sin él, wa.me no abre el chat.
@@ -24,6 +26,15 @@ function whatsappLink(valor) {
 
 function buildItems(soporte) {
   return [
+    {
+      key: 'nombre',
+      label: 'Contacto',
+      value: soporte.nombre,
+      tone: 'slate',
+      Icon: IconUser,
+      href: null,
+      action: null,
+    },
     {
       key: 'telefono',
       label: 'Teléfono',
@@ -118,7 +129,7 @@ function SupportCard({ soporte, preview = false }) {
                     {action}
                   </a>
                 )}
-                {key !== 'horario' && <CopyButton value={value} />}
+                {key !== 'horario' && key !== 'nombre' && <CopyButton value={value} />}
               </div>
             </div>
           ))}
@@ -150,21 +161,16 @@ export default function SupportPage({ isSuperAdmin }) {
   useEffect(() => {
     getSoporte().then((data) => {
       setSoporte(data);
-      setForm({ telefono: data.telefono, whatsapp: data.whatsapp, correo: data.correo, horario: data.horario });
+      setForm(Object.fromEntries(CAMPOS.map((c) => [c, data[c] || ''])));
     }).catch(console.error);
   }, []);
 
-  const dirty = ['telefono', 'whatsapp', 'correo', 'horario'].some(
+  const dirty = CAMPOS.some(
     (campo) => (form[campo] || '') !== (soporte[campo] || '')
   );
 
   function discard() {
-    setForm({
-      telefono: soporte.telefono || '',
-      whatsapp: soporte.whatsapp || '',
-      correo: soporte.correo || '',
-      horario: soporte.horario || '',
-    });
+    setForm(Object.fromEntries(CAMPOS.map((c) => [c, soporte[c] || ''])));
   }
 
   async function submit(e) {
@@ -203,6 +209,15 @@ export default function SupportPage({ isSuperAdmin }) {
             </div>
 
             <div className="support-form-grid">
+              <div className="support-form-wide">
+                <Field
+                  label="Nombre del contacto"
+                  icon={IconUser}
+                  value={form.nombre}
+                  onChange={(e) => setForm({ ...form, nombre: e.target.value })}
+                  placeholder="Ej. Junior"
+                />
+              </div>
               <Field
                 label="Teléfono"
                 icon={IconPhone}

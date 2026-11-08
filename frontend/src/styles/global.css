@@ -1723,6 +1723,7 @@ tbody tr:last-child td { border-bottom: 0; }
 .support-item-icon.green { background: #e2f8ef; color: #0b7a5c; }
 .support-item-icon.purple { background: #f1eaff; color: #6b3fc9; }
 .support-item-icon.amber { background: #fdf2da; color: #8a5a00; }
+.support-item-icon.slate { background: #e8edf5; color: #334a6b; }
 
 .support-item-body { flex: 1; min-width: 0; }
 

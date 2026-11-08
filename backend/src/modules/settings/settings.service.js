@@ -19,7 +19,7 @@ export async function setCostoMensaje(valor) {
   return getCostoMensaje();
 }
 
-const SOPORTE_DEFAULT = { telefono: '', whatsapp: '', correo: '', horario: '' };
+const SOPORTE_DEFAULT = { nombre: '', telefono: '', whatsapp: '', correo: '', horario: '' };
 
 export async function getSoporte() {
   const row = await repository.getSettingMeta('soporte_info');
@@ -28,8 +28,9 @@ export async function getSoporte() {
   return { ...SOPORTE_DEFAULT, ...JSON.parse(row.valor), actualizadoEn: row.updated_at };
 }
 
-export async function setSoporte({ telefono, whatsapp, correo, horario }) {
+export async function setSoporte({ nombre, telefono, whatsapp, correo, horario }) {
   const data = {
+    nombre: (nombre || '').trim(),
     telefono: (telefono || '').trim(),
     whatsapp: (whatsapp || '').trim(),
     correo: (correo || '').trim(),
