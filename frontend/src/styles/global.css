@@ -792,6 +792,21 @@ label {
 }
 .file-drop-icon.selected { background: #e6f7f2; color: #0e7c5f; margin-bottom: 0; flex-shrink: 0; }
 .file-drop-icon.big { width: 52px; height: 52px; border-radius: 16px; }
+/* Ícono de subida: la flecha sube y sale por arriba, y vuelve a entrar desde abajo */
+.file-drop-icon.big { overflow: hidden; }
+.file-drop-icon.big svg { animation: upload-rise 2.2s ease-in-out infinite; }
+.file-drop:hover .file-drop-icon.big svg,
+.file-drop.dragging .file-drop-icon.big svg { animation-duration: 1.1s; }
+@keyframes upload-rise {
+  0%   { transform: translateY(0); opacity: 1; }
+  45%  { transform: translateY(-18px); opacity: 0; }
+  46%  { transform: translateY(18px); opacity: 0; }
+  100% { transform: translateY(0); opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .file-drop-icon.big svg { animation: none; }
+}
+
 .file-drop.dragging { border-color: var(--color-primary); background: var(--color-primary-soft); border-style: solid; }
 
 .file-hint {
