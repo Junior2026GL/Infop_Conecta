@@ -7,6 +7,7 @@ import {
   IconMail,
   IconUser,
   IconMessageCircle,
+  IconWhatsApp,
   IconClock,
   IconShield,
   IconCheck,
@@ -49,7 +50,7 @@ function buildItems(soporte) {
       label: 'WhatsApp',
       value: soporte.whatsapp,
       tone: 'green',
-      Icon: IconMessageCircle,
+      Icon: IconWhatsApp,
       href: whatsappLink(soporte.whatsapp),
       action: 'Abrir chat',
     },
@@ -116,7 +117,7 @@ function SupportCard({ soporte, preview = false }) {
         <div className="support-list">
           {items.map(({ key, label, value, tone, Icon, href, action }) => (
             <div className="support-item" key={key}>
-              <span className={`support-item-icon ${tone}`}><Icon /></span>
+              <span className={`support-item-icon ${tone}`}><Icon width={22} height={22} strokeWidth={2} /></span>
 
               <div className="support-item-body">
                 <span className="support-item-label">{label}</span>
@@ -125,7 +126,7 @@ function SupportCard({ soporte, preview = false }) {
 
               <div className="support-item-actions">
                 {href && (
-                  <a className="support-action" href={href} target="_blank" rel="noreferrer">
+                  <a className={`support-action ${tone}`} href={href} target="_blank" rel="noreferrer">
                     {action}
                   </a>
                 )}
@@ -228,7 +229,7 @@ export default function SupportPage({ isSuperAdmin }) {
               />
               <Field
                 label="WhatsApp"
-                icon={IconMessageCircle}
+                icon={IconWhatsApp}
                 value={form.whatsapp}
                 onChange={(e) => setForm({ ...form, whatsapp: e.target.value })}
                 placeholder="Ej. 98765432"
