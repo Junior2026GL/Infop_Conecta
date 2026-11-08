@@ -19,7 +19,6 @@ import {
   IconAlert,
   IconTrash,
   IconEdit,
-  IconDownload,
 } from '../../../components/icons.jsx';
 import { useToast } from '../../../components/ToastProvider.jsx';
 import { listTemplates } from '../../templates/services/templates.service.js';
@@ -34,7 +33,6 @@ import {
   removeDestinatario,
   updateDestinatario,
   addDestinatario,
-  downloadParticipantsTemplate,
 } from '../services/campaigns.service.js';
 
 const estadoLabels = {
@@ -258,7 +256,6 @@ export default function CampaignsPage() {
   const [sending, setSending] = useState(false);
   const [showConfirmSend, setShowConfirmSend] = useState(false);
   const [retrying, setRetrying] = useState(false);
-  const [downloadingTemplate, setDownloadingTemplate] = useState(false);
   const [soloInvalidos, setSoloInvalidos] = useState(false);
   const [sendTotal, setSendTotal] = useState(0);
   const [removingId, setRemovingId] = useState(null);
@@ -377,18 +374,6 @@ export default function CampaignsPage() {
       toast.error(message);
     } finally {
       setImporting(false);
-    }
-  }
-
-  async function handleDownloadTemplate() {
-    setDownloadingTemplate(true);
-    try {
-      await downloadParticipantsTemplate(plantillaId);
-    } catch (err) {
-      console.error(err);
-      toast.error('No se pudo descargar la plantilla de Excel');
-    } finally {
-      setDownloadingTemplate(false);
     }
   }
 
@@ -542,7 +527,6 @@ export default function CampaignsPage() {
 
   // Con 20 mensajes o menos el saldo se considera justo.
   const estadoSaldo = alcanzaPara === null ? 'ok' : alcanzaPara <= 0 ? 'none' : alcanzaPara <= 20 ? 'low' : 'ok';
-  const requiereNota = (plantilla?.variables || []).some((v) => v.key === 'nota');
   const campaignUsaNota = (campaign?.variables || []).some((v) => v.key === 'nota');
 
   const filteredHistory = useMemo(() => history.filter((c) => {
@@ -641,24 +625,6 @@ export default function CampaignsPage() {
                 <section className="form-step">
                   <h4 className="step-head"><span className="step-num">3</span> Archivo de participantes</h4>
                   <FileDropzone file={file} onChange={setFile} />
-                  <div className="file-hint">
-                    <span>
-                      {plantilla ? (
-                        <>Columnas: <b>nombre</b>, <b>telefono</b>{requiereNota && <>, <b>nota</b></>}.</>
-                      ) : (
-                        'Elige una plantilla para ver las columnas que necesita.'
-                      )}
-                    </span>
-                    <button
-                      type="button"
-                      className="btn-link"
-                      onClick={handleDownloadTemplate}
-                      disabled={downloadingTemplate || !plantilla}
-                      title={plantilla ? undefined : 'Elige primero una plantilla'}
-                    >
-                      <IconDownload width={14} height={14} /> {downloadingTemplate ? 'Descargando…' : 'Descargar plantilla de Excel'}
-                    </button>
-                  </div>
                 </section>
               </div>
 
