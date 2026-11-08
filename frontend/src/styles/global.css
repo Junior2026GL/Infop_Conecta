@@ -2738,7 +2738,7 @@ tbody tr:last-child td { border-bottom: 0; }
 
 .dash-kpi-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(180px, 240px));
   gap: 16px;
   margin-bottom: 20px;
 }
@@ -2746,7 +2746,7 @@ tbody tr:last-child td { border-bottom: 0; }
 .dash-kpi {
   position: relative;
   overflow: hidden;
-  padding: 22px 24px 24px;
+  padding: 18px 20px 20px;
   background: white;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
@@ -2782,9 +2782,9 @@ tbody tr:last-child td { border-bottom: 0; }
 }
 
 .dash-kpi-icon {
-  width: 46px;
-  height: 46px;
-  border-radius: 14px;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -2822,13 +2822,13 @@ tbody tr:last-child td { border-bottom: 0; }
 
 .dash-kpi-value {
   display: block;
-  font-size: 36px;
+  font-size: 30px;
   font-weight: 800;
   letter-spacing: -0.03em;
   line-height: 1.15;
   color: var(--color-text);
 }
-.dash-kpi-value.sm { font-size: 28px; }
+.dash-kpi-value.sm { font-size: 24px; }
 
 .dash-skeleton {
   display: block;
@@ -2850,7 +2850,7 @@ tbody tr:last-child td { border-bottom: 0; }
   display: grid;
   grid-template-columns: minmax(0, 1.65fr) minmax(280px, 1fr);
   gap: 18px;
-  align-items: stretch;
+  align-items: start;
 }
 
 .dash-panel {
@@ -2862,9 +2862,6 @@ tbody tr:last-child td { border-bottom: 0; }
 }
 
 .dash-panel-tight { padding: 18px 18px 14px; }
-.dash-split > .dash-panel { display: flex; flex-direction: column; }
-.dash-split > .dash-panel .dash-donut-row,
-.dash-split > .dash-panel .dash-empty { flex: 1; }
 
 .dash-panel-head {
   display: flex;
@@ -2885,8 +2882,7 @@ tbody tr:last-child td { border-bottom: 0; }
 .dash-donut-row {
   display: flex;
   align-items: center;
-  justify-content: center;
-  gap: 40px;
+  gap: 28px;
   flex-wrap: wrap;
 }
 
@@ -2906,7 +2902,7 @@ tbody tr:last-child td { border-bottom: 0; }
 .dash-donut-center strong { font-size: 24px; font-weight: 800; letter-spacing: -0.02em; color: var(--color-text); }
 .dash-donut-center span { font-size: 11.5px; color: var(--color-muted); font-weight: 600; }
 
-.dash-legend { flex: 1; min-width: 200px; max-width: 380px; display: grid; gap: 12px; }
+.dash-legend { flex: 1; min-width: 200px; display: grid; gap: 12px; }
 
 .dash-legend-item {
   display: flex;
@@ -3018,7 +3014,7 @@ tbody tr:last-child td { border-bottom: 0; }
 }
 .dash-wallet-fill.bajo { background: #fbbf24; }
 
-.dash-wallet-hint { display: block; font-size: 12.5px; color: rgba(255,255,255,.8); }
+.dash-wallet-hint { font-size: 12.5px; color: rgba(255,255,255,.8); }
 .dash-wallet-hint b { color: white; }
 
 .dash-wallet-link {
@@ -3045,29 +3041,26 @@ tbody tr:last-child td { border-bottom: 0; }
   border-radius: var(--radius-md);
   cursor: pointer;
   text-align: left;
-  transition: background-color .15s ease, transform .15s ease;
+  transition: background-color .15s ease;
 }
-.dash-link:hover { background: #f3f7ff; transform: translateX(2px); }
+.dash-link:hover { background: #f5f8fc; }
 .dash-link:hover .dash-link-arrow { transform: translateX(3px); color: var(--color-primary); }
 .dash-link:hover .dash-link-icon { transform: scale(1.08); }
 
 .dash-link-icon {
-  width: 42px;
-  height: 42px;
-  border-radius: 13px;
-  color: white;
-  box-shadow: 0 8px 14px -6px var(--tone-shadow, rgba(16, 24, 40, .3)), inset 0 1px 0 rgba(255, 255, 255, .35);
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
   transition: transform .15s ease;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
 }
-.dash-link-icon svg { width: 20px; height: 20px; }
-.dash-link-icon.blue   { --tone-shadow: rgba(37, 99, 235, .55);  background: linear-gradient(145deg, #4f8cff, #1d4ed8); }
-.dash-link-icon.green  { --tone-shadow: rgba(16, 185, 129, .55); background: linear-gradient(145deg, #34d399, #0b9a6a); }
-.dash-link-icon.purple { --tone-shadow: rgba(124, 77, 255, .5);  background: linear-gradient(145deg, #a78bfa, #6b3fc9); }
-.dash-link-icon.amber  { --tone-shadow: rgba(245, 158, 11, .55); background: linear-gradient(145deg, #fbbf24, #e08a00); }
+.dash-link-icon.blue { background: #e7eeff; color: #1d4ed8; }
+.dash-link-icon.green { background: #e2f8ef; color: #0b7a5c; }
+.dash-link-icon.purple { background: #f1eaff; color: #6b3fc9; }
+.dash-link-icon.amber { background: #fdf2da; color: #8a5a00; }
 
 .dash-link-text { flex: 1; min-width: 0; }
 .dash-link-text b { display: block; font-size: 13.5px; font-weight: 600; }
