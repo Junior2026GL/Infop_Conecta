@@ -1,6 +1,23 @@
+import { useEffect } from 'react';
 import { IconClose } from './icons.jsx';
 
+// Cuenta los modales abiertos: mientras haya alguno, la página lleva la clase
+// "modal-open" y las animaciones decorativas del fondo se pausan.
+let modalesAbiertos = 0;
+
 export default function Modal({ title, subtitle, icon, onClose, children, footer, width = 480 }) {
+  useEffect(() => {
+    modalesAbiertos += 1;
+    document.documentElement.classList.add('modal-open');
+    return () => {
+      modalesAbiertos -= 1;
+      if (modalesAbiertos <= 0) {
+        modalesAbiertos = 0;
+        document.documentElement.classList.remove('modal-open');
+      }
+    };
+  }, []);
+
   return (
     <div className="modal-overlay">
       <div className="modal-dialog" style={{ maxWidth: width }}>

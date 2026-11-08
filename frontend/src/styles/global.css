@@ -277,17 +277,19 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 }
 .side-bar-fill {
   height: 100%;
-  width: 0;
+  width: 100%;
+  transform-origin: left center;
+  will-change: transform, opacity;
   border-radius: inherit;
   background: linear-gradient(90deg, #1d6fe0, #4ade80);
   box-shadow: 0 0 10px rgba(74,222,128,.6);
   animation: side-bar-fill 3.6s cubic-bezier(.4, 0, .2, 1) infinite;
 }
 @keyframes side-bar-fill {
-  0%   { width: 0; opacity: 1; }
-  75%  { width: 100%; opacity: 1; }
-  90%  { width: 100%; opacity: 0; }
-  100% { width: 0; opacity: 0; }
+  0%   { transform: scaleX(0); opacity: 1; }
+  75%  { transform: scaleX(1); opacity: 1; }
+  90%  { transform: scaleX(1); opacity: 0; }
+  100% { transform: scaleX(0); opacity: 0; }
 }
 
 .side-status {
@@ -380,9 +382,14 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   font-weight: 500;
   color: rgba(255,255,255,.66);
 }
+/* Con un modal abierto se pausan las animaciones del menú que quedan detrás */
+.modal-open .side-bar-fill,
+.modal-open .side-pulse::before,
+.modal-open .side-pulse::after { animation-play-state: paused; }
+
 @media (prefers-reduced-motion: reduce) {
   .side-pulse::before, .side-pulse::after { animation: none; }
-  .side-bar-fill { animation: none; width: 100%; }
+  .side-bar-fill { animation: none; }
 }
 
 .sidebar nav {
@@ -2070,8 +2077,6 @@ tbody tr:last-child td { border-bottom: 0; }
   position: relative;
 }
 
-/* Barra inferior del encabezado: pista tenue + relleno que avanza en bucle */
-.modal-header::before,
 .modal-header::after {
   content: '';
   position: absolute;
@@ -2080,23 +2085,6 @@ tbody tr:last-child td { border-bottom: 0; }
   bottom: -1px;
   height: 3px;
   background: linear-gradient(90deg, var(--color-primary), var(--color-accent));
-}
-.modal-header::before { opacity: .18; }
-.modal-header::after {
-  z-index: 1;
-  transform-origin: left center;
-  box-shadow: 0 0 10px rgba(74, 222, 128, .6);
-  animation: modal-bar-fill 3.6s cubic-bezier(.4, 0, .2, 1) infinite;
-}
-@keyframes modal-bar-fill {
-  0%   { transform: scaleX(0); opacity: 1; }
-  75%  { transform: scaleX(1); opacity: 1; }
-  90%  { transform: scaleX(1); opacity: 0; }
-  100% { transform: scaleX(0); opacity: 0; }
-}
-@media (prefers-reduced-motion: reduce) {
-  .modal-header::before { opacity: 0; }
-  .modal-header::after { animation: none; box-shadow: none; }
 }
 
 .modal-header-text { display: flex; align-items: center; gap: 12px; min-width: 0; }
