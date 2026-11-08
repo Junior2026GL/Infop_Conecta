@@ -14,7 +14,6 @@ import {
   IconSun,
   IconCloudSun,
   IconMoonStars,
-  IconUpload,
 } from '../../../components/icons.jsx';
 import { SHOW_DELIVERY_STATS } from '../../../config/env.js';
 import { getStats } from '../services/dashboard.service.js';
@@ -177,12 +176,6 @@ export default function DashboardPage() {
   const fechaHoy = capitalizar(ahora.toLocaleDateString('es-HN', { weekday: 'long', day: 'numeric', month: 'long' }));
   const horaAhora = ahora.toLocaleTimeString('es-HN', { hour: 'numeric', minute: '2-digit' });
 
-  const destacados = [
-    { label: 'Importación desde Excel', Icon: IconUpload },
-    { label: 'Plantillas aprobadas', Icon: IconTemplate },
-    { label: 'Seguimiento en tiempo real', Icon: IconHistory },
-  ];
-
   const accesos = [
     { label: 'Plantillas', hint: 'Crear y aprobar mensajes', Icon: IconTemplate, to: '/plantillas', tone: 'blue' },
     { label: 'Campañas', hint: 'Envíos masivos por curso', Icon: IconSend, to: '/campanas', tone: 'green' },
@@ -206,15 +199,6 @@ export default function DashboardPage() {
             Administra plantillas, campañas de envío masivo y el historial de mensajes
             enviados mediante WhatsApp Cloud API.
           </p>
-
-          <ul className="dash-hero-highlights">
-            {destacados.map(({ label, Icon }) => (
-              <li key={label}>
-                <span className="dash-hero-highlight-icon"><Icon width={14} height={14} /></span>
-                {label}
-              </li>
-            ))}
-          </ul>
         </div>
 
         <div className="dash-hero-actions">
@@ -238,12 +222,17 @@ export default function DashboardPage() {
       )}
 
       <div className="dash-kpi-grid">
-        {cards.map(({ label, value, Icon, tone, kind }) => (
-          <div className={`dash-kpi ${tone}`} key={label}>
+        {cards.map(({ label, value, Icon, tone, kind }) => {
+          // Un contador de fallidos en cero no es una alerta: se muestra en verde.
+          const sinFallos = tone === 'red' && !cargando && Number(value) === 0;
+          const cardTone = sinFallos ? 'green' : tone;
+          const CardIcon = sinFallos ? IconCheck : Icon;
+          return (
+          <div className={`dash-kpi ${cardTone}`} key={label}>
             <div className="dash-kpi-top">
-              <span className={`dash-kpi-icon ${tone}`}><Icon /></span>
+              <span className={`dash-kpi-icon ${cardTone}`}><CardIcon /></span>
               {kind === 'count' && !cargando && totalMensajes > 0 && (
-                <span className={`dash-chip ${tone}`}>{porcentaje(value, totalMensajes)}%</span>
+                <span className={`dash-chip ${cardTone}`}>{porcentaje(value, totalMensajes)}% del total</span>
               )}
             </div>
             <span className="dash-kpi-label">{label}</span>
@@ -255,7 +244,8 @@ export default function DashboardPage() {
                 </strong>
               )}
           </div>
-        ))}
+          );
+        })}
       </div>
 
       <div className="dash-split">
