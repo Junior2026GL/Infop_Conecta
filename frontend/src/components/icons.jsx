@@ -123,11 +123,12 @@ export function IconPower(props) {
   );
 }
 
-export function IconCloudUpload(props) {
+// Flecha hacia arriba sobre una bandeja, con trazo grueso
+export function IconTrayUpload(props) {
   return (
-    <svg {...base} {...props}>
-      <path d="M7 18a4.5 4.5 0 0 1-.6-8.96A6 6 0 0 1 18 9.5a4 4 0 0 1-.5 8" />
-      <path d="M12 21v-8M8.8 15.8 12 12.6l3.2 3.2" />
+    <svg {...base} strokeWidth={2.8} {...props}>
+      <path d="M12 15V4M7 9l5-5 5 5" />
+      <path d="M4.5 14.5V18a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2v-3.5" />
     </svg>
   );
 }
