@@ -14,7 +14,8 @@ const SEND_DELAY_MS = 5000;
 function parseExcelBuffer(buffer) {
   const workbook = XLSX.read(buffer, { type: 'buffer' });
   const sheet = workbook.Sheets[workbook.SheetNames[0]];
-  return XLSX.utils.sheet_to_json(sheet, { defval: '' });
+  // Filas como arreglos: se leen por posición de columna, sin importar los encabezados
+  return XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '', blankrows: false });
 }
 
 function slugify(texto) {
@@ -47,11 +48,11 @@ export async function buildParticipantsTemplate(plantillaId) {
     [`Plantilla: ${plantilla.nombre}`],
     ['Cómo llenar la hoja «Participantes»'],
     [''],
-    ['nombre', 'Obligatorio. Nombre del participante tal como se mostrará en el mensaje.'],
-    ['telefono', 'Obligatorio. 8 dígitos (98765432) o 11 con código de país (50498765432).'],
-    ...(needsNota ? [['nota', 'Obligatorio. Nota del participante que se incluirá en el mensaje.']] : []),
+    ['A: nombre', 'Obligatorio. Nombre del participante tal como se mostrará en el mensaje.'],
+    ['B: telefono', 'Obligatorio. 8 dígitos (98765432) o 11 con código de país (50498765432).'],
+    ...(needsNota ? [['C: nota', 'Obligatorio. Nota del participante que se incluirá en el mensaje.']] : []),
     [''],
-    ['No cambies los encabezados de la primera fila. Borra esta hoja si lo prefieres.'],
+    ['Las columnas se leen por posición (A, B, C) y la primera fila se ignora. Borra esta hoja si lo prefieres.'],
   ]);
   instrucciones['!cols'] = [{ wch: 12 }, { wch: 80 }];
 
@@ -65,23 +66,25 @@ export async function buildParticipantsTemplate(plantillaId) {
   };
 }
 
-function normalizeKey(key) {
-  return String(key || '').trim().toLowerCase();
-}
+// El archivo se lee por posición: columna A = nombre, B = teléfono, C = nota (solo si la
+// plantilla la usa). La primera fila son los encabezados y se ignora, diga lo que diga.
+function extractRows(rawRows, needsNota) {
+  const columnasMin = needsNota ? 3 : 2;
+  const ancho = Math.max(...rawRows.map((r) => r.length));
+  if (ancho < columnasMin) {
+    throw new AppError(
+      needsNota
+        ? 'El archivo debe tener 3 columnas en orden: A = nombre, B = teléfono, C = nota'
+        : 'El archivo debe tener 2 columnas en orden: A = nombre, B = teléfono',
+    );
+  }
 
-function extractRows(rawRows) {
-  return rawRows.map((row) => {
-    const normalized = {};
-    for (const [key, value] of Object.entries(row)) {
-      normalized[normalizeKey(key)] = value;
-    }
-
+  return rawRows.slice(1).map((row) => {
+    const nota = needsNota && String(row[2] ?? '').trim() !== '' ? String(row[2]).trim() : null;
     return {
-      nombre: String(normalized.nombre || '').trim(),
-      telefono: String(normalized.telefono || '').trim(),
-      nota: normalized.nota !== undefined && String(normalized.nota).trim() !== ''
-        ? String(normalized.nota).trim()
-        : null,
+      nombre: String(row[0] ?? '').trim(),
+      telefono: String(row[1] ?? '').trim(),
+      nota,
     };
   });
 }
@@ -143,9 +146,9 @@ export async function importFile({ file, plantillaId, nombre, curso, valoresFijo
     throw new AppError('No se pudo leer el archivo. Verifica que sea .xlsx o .csv');
   }
 
-  if (!rawRows.length) throw new AppError('El archivo no tiene registros');
+  if (rawRows.length < 2) throw new AppError('El archivo no tiene registros');
 
-  const rows = extractRows(rawRows);
+  const rows = extractRows(rawRows, needsNota);
 
   const telefonosVistos = new Set();
   const destinatarios = rows.map((row) => {
