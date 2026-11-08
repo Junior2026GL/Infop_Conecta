@@ -61,9 +61,10 @@ export function IconUsers(props) {
 export function IconCost(props) {
   return (
     <svg {...base} {...props}>
+      {/* Lempira: una L con una barra que cruza el trazo vertical */}
       <circle cx="12" cy="12" r="8.5" />
-      <path d="M14.8 9.3a2.8 2.8 0 0 0-2.6-1.6c-1.7 0-2.9 1.1-2.9 2.5s1.1 2 2.9 2.4c1.8.4 2.9 1 2.9 2.4s-1.2 2.5-2.9 2.5a2.9 2.9 0 0 1-2.7-1.6" />
-      <path d="M12 6.3v1.4M12 16.3v1.4" />
+      <path d="M10.4 7.2v8.6h4.4" />
+      <path d="M8.6 11h4" />
     </svg>
   );
 }
