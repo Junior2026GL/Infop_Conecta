@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { IconSend } from '../components/icons.jsx';
 import { getStats } from '../features/dashboard/services/dashboard.service.js';
 
 const DURATION_MS = 1200;
@@ -48,10 +49,15 @@ export default function SidebarStatus() {
       <div className="side-status">
         <div className="side-status-top">
           <span className="side-pulse" />
-          Sistema en línea
+          En línea
         </div>
-        <div className="side-status-count">{count.toLocaleString('es')}</div>
-        <div className="side-status-label">mensajes enviados hoy</div>
+        <div className="side-status-body">
+          <div>
+            <div className="side-status-count">{count.toLocaleString('es')}</div>
+            <div className="side-status-label">mensajes enviados hoy</div>
+          </div>
+          <span className="side-status-icon"><IconSend width={18} height={18} /></span>
+        </div>
       </div>
     </div>
   );

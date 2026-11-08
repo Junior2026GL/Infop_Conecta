@@ -291,18 +291,54 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
 }
 
 .side-status {
-  padding: 16px;
-  border-radius: 14px;
-  background: rgba(255,255,255,.07);
-  border: 1px solid rgba(255,255,255,.1);
+  position: relative;
+  overflow: hidden;
+  padding: 16px 16px 16px 18px;
+  border-radius: 16px;
+  background:
+    radial-gradient(120% 90% at 100% 0%, rgba(74,222,128,.16), transparent 55%),
+    linear-gradient(160deg, rgba(255,255,255,.12), rgba(255,255,255,.04));
+  border: 1px solid rgba(255,255,255,.14);
+  box-shadow: 0 10px 24px rgba(3, 14, 40, .35), inset 0 1px 0 rgba(255,255,255,.12);
+}
+/* Franja de acento a la izquierda */
+.side-status::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 16px;
+  bottom: 16px;
+  width: 3px;
+  border-radius: 0 3px 3px 0;
+  background: linear-gradient(180deg, #4ade80, #1d6fe0);
 }
 .side-status-top {
   display: flex;
   align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: #86efac;
+}
+.side-status-body {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
   gap: 10px;
-  font-size: 12px;
-  font-weight: 600;
-  color: rgba(255,255,255,.8);
+  margin-top: 14px;
+}
+.side-status-icon {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+  color: #bbf7d0;
+  background: rgba(74,222,128,.14);
+  border: 1px solid rgba(74,222,128,.28);
 }
 .side-pulse {
   position: relative;
@@ -327,17 +363,22 @@ button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-
   100% { transform: scale(3.2); opacity: 0; }
 }
 .side-status-count {
-  margin-top: 12px;
-  font-size: 30px;
+  font-size: 38px;
   font-weight: 800;
   line-height: 1;
+  letter-spacing: -.03em;
   color: white;
   font-variant-numeric: tabular-nums;
+  background: linear-gradient(180deg, #ffffff 30%, #bfdbfe);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
 }
 .side-status-label {
-  margin-top: 4px;
-  font-size: 12px;
-  color: rgba(255,255,255,.62);
+  margin-top: 6px;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: rgba(255,255,255,.66);
 }
 @media (prefers-reduced-motion: reduce) {
   .side-pulse::before, .side-pulse::after { animation: none; }
