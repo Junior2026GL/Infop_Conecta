@@ -11,6 +11,7 @@ import {
   IconMessageCircle,
 } from '../components/icons.jsx';
 import UserMenu from './UserMenu.jsx';
+import SidebarStatus from './SidebarStatus.jsx';
 
 const baseMenu = [
   ['/', 'Dashboard', IconDashboard],
@@ -54,6 +55,8 @@ export default function MainLayout() {
             </NavLink>
           ))}
         </nav>
+
+        <SidebarStatus />
       </aside>
 
       <div className="main-area">

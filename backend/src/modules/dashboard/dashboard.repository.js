@@ -14,7 +14,8 @@ export async function getStats({ enviadoPor } = {}) {
       SUM(estado = 'SENT') sent,
       SUM(estado = 'DELIVERED') delivered,
       SUM(estado = 'READ') read_count,
-      SUM(estado = 'FAILED') failed
+      SUM(estado = 'FAILED') failed,
+      SUM(estado IN ('SENT','DELIVERED','READ') AND DATE(created_at) = CURDATE()) hoy
      FROM mensajes
      ${where}`,
     params
@@ -27,6 +28,7 @@ export async function getStats({ enviadoPor } = {}) {
       entregados: Number(messages.delivered || 0),
       leidos: Number(messages.read_count || 0),
       fallidos: Number(messages.failed || 0),
+      hoy: Number(messages.hoy || 0),
     },
   };
 }
