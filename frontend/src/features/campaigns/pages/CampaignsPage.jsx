@@ -762,7 +762,7 @@ export default function CampaignsPage() {
                     <span>
                       Necesitas L. {costoEstimadoEnvio.toFixed(2)} para {pendientes} mensaje{pendientes === 1 ? '' : 's'} pendiente{pendientes === 1 ? '' : 's'},
                       y tu saldo disponible es L. {Number(misaldo).toFixed(2)} (te faltan L. {faltante.toFixed(2)}).{' '}
-                      {esSuperAdmin ? 'Recarga saldo desde Saldos.' : 'Solicita una recarga al Super Admin.'}
+                      {esSuperAdmin ? 'Recarga saldo desde Saldos.' : 'Solicita una recarga al administrador del sistema.'}
                     </span>
                   </div>
                 </div>
@@ -806,7 +806,7 @@ export default function CampaignsPage() {
                     <b>El envío se detuvo antes de terminar.</b>
                     <span>
                       Quedaron {pendientes} mensaje{pendientes === 1 ? '' : 's'} sin enviar, normalmente porque el saldo se agotó.
-                      {esSuperAdmin ? ' Recarga saldo desde Saldos' : ' Solicita una recarga al Super Admin'} y pulsa «Reenviar no enviados».
+                      {esSuperAdmin ? ' Recarga saldo desde Saldos' : ' Solicita una recarga al administrador del sistema'} y pulsa «Reenviar no enviados».
                     </span>
                   </div>
                 </div>

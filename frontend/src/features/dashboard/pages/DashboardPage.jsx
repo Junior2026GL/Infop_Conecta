@@ -232,7 +232,7 @@ export default function DashboardPage() {
           <IconAlert />
           <span>
             Tu saldo alcanza para {alcanzaPara <= 0 ? 'ningún mensaje más' : `solo ${alcanzaPara} mensaje${alcanzaPara === 1 ? '' : 's'} más`}.
-            {esSuperAdmin ? ' Recarga saldo desde Costos.' : ' Solicita una recarga al Super Admin.'}
+            {esSuperAdmin ? ' Recarga saldo desde Costos.' : ' Solicita una recarga al administrador del sistema.'}
           </span>
         </div>
       )}

@@ -358,7 +358,7 @@ export async function send(id, userId, requestUser) {
     const saldo = await walletRepository.getSaldo(beneficiario);
     if (saldo < costoEstimado) {
       throw new AppError(
-        `Saldo insuficiente para enviar. Se necesitan L. ${costoEstimado.toFixed(2)} y el saldo disponible es L. ${saldo.toFixed(2)}. Solicita una recarga al Super Admin.`
+        `Saldo insuficiente para enviar. Se necesitan L. ${costoEstimado.toFixed(2)} y el saldo disponible es L. ${saldo.toFixed(2)}. Solicita una recarga al administrador del sistema.`
       );
     }
   }
