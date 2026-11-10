@@ -1,4 +1,5 @@
 import * as repository from './audit.repository.js';
+import { getClientIp } from '../../shared/utils/clientIp.js';
 
 export function logAudit(payload) {
   return repository.logAudit(payload);
@@ -16,7 +17,7 @@ export async function record(req, { accion, modulo, descripcion, userId }) {
       accion,
       modulo,
       descripcion,
-      ip: req.ip,
+      ip: getClientIp(req),
     });
   } catch (error) {
     console.error('No se pudo registrar auditoría:', error.message);

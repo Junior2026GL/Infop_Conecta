@@ -12,3 +12,9 @@ export const db = mysql.createPool({
   queueLimit: 0,
   dateStrings: true,
 });
+
+// Todas las conexiones trabajan en hora de Honduras (UTC-6, sin horario de verano),
+// para que NOW() y CURRENT_TIMESTAMP usen la hora local sin importar la zona del servidor.
+db.pool.on('connection', (connection) => {
+  connection.query("SET time_zone = '-06:00'");
+});

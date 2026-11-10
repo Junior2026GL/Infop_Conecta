@@ -1,9 +1,10 @@
 import * as authService from './auth.service.js';
 import { record as recordAudit } from '../audit/audit.service.js';
+import { getClientIp } from '../../shared/utils/clientIp.js';
 
 export async function login(req, res, next) {
   try {
-    const data = await authService.login(req.body, req.ip);
+    const data = await authService.login(req.body, getClientIp(req));
     await recordAudit(req, {
       userId: data.user.id,
       accion: 'LOGIN',
